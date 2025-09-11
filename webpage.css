@@ -1,0 +1,34 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 15px;
+    background-color: var(--tg-theme-bg-color);
+    color: var(--tg-theme-text-color);
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+th, td {
+    border: 1px solid var(--tg-theme-hint-color);
+    padding: 8px;
+    text-align: center;
+    height: 40px;
+}
+th {
+    background-color: var(--tg-theme-secondary-bg-color);
+}
+td.editable:hover {
+    background-color: var(--tg-theme-secondary-bg-color);
+    cursor: pointer;
+}
+button {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--tg-theme-button-color);
+    color: var(--tg-theme-button-text-color);
+    cursor: pointer;
+}
