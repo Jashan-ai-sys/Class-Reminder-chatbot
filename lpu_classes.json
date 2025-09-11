@@ -1,0 +1,254 @@
+{
+  "1226738360": [
+    {
+      "id": 1,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-08T09:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "Formal Languages - Priyanka Gotter - Monday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.844562"
+    },
+    {
+      "id": 2,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-08T10:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "FLAT Class 2 - Priyanka Gotter - Monday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.846571"
+    },
+    {
+      "id": 3,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-08T13:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytical Skills-II - Abhishek Raj - Monday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.848569"
+    },
+    {
+      "id": 4,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-08T14:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytics Class 2 - Abhishek Raj - Monday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.851397"
+    },
+    {
+      "id": 5,
+      "name": "PETS13 DS-II",
+      "time": "2025-09-08T11:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pets13",
+      "notes": "Data Structure-II - Alok Kumar - Monday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.852435"
+    },
+    {
+      "id": 6,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-09T09:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "Formal Languages - Priyanka Gotter - Tuesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.852435"
+    },
+    {
+      "id": 7,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-09T10:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "FLAT Class 2 - Priyanka Gotter - Tuesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.852435"
+    },
+    {
+      "id": 8,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-09T13:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytical Skills-II - Abhishek Raj - Tuesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.860603"
+    },
+    {
+      "id": 9,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-09T14:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytics Class 2 - Abhishek Raj - Tuesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.863626"
+    },
+    {
+      "id": 10,
+      "name": "PETS13 DS-II",
+      "time": "2025-09-09T11:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pets13",
+      "notes": "Data Structure-II - Alok Kumar - Tuesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.866418"
+    },
+    {
+      "id": 11,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-10T09:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "Formal Languages - Priyanka Gotter - Wednesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.868417"
+    },
+    {
+      "id": 12,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-10T10:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "FLAT Class 2 - Priyanka Gotter - Wednesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.872155"
+    },
+    {
+      "id": 13,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-10T13:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytical Skills-II - Abhishek Raj - Wednesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.873793"
+    },
+    {
+      "id": 14,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-10T14:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytics Class 2 - Abhishek Raj - Wednesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.873793"
+    },
+    {
+      "id": 15,
+      "name": "PETS13 DS-II",
+      "time": "2025-09-10T11:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pets13",
+      "notes": "Data Structure-II - Alok Kumar - Wednesday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.879206"
+    },
+    {
+      "id": 16,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-11T09:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "Formal Languages - Priyanka Gotter - Thursday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.882398"
+    },
+    {
+      "id": 17,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-11T10:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "FLAT Class 2 - Priyanka Gotter - Thursday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.884405"
+    },
+    {
+      "id": 18,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-11T13:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytical Skills-II - Abhishek Raj - Thursday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.886605"
+    },
+    {
+      "id": 19,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-11T14:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytics Class 2 - Abhishek Raj - Thursday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.886605"
+    },
+    {
+      "id": 20,
+      "name": "PETS13 DS-II",
+      "time": "2025-09-11T16:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pets13",
+      "notes": "DS Evening - Alok Kumar - Thursday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.886605"
+    },
+    {
+      "id": 21,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-12T09:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "Formal Languages - Priyanka Gotter - Friday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.893035"
+    },
+    {
+      "id": 22,
+      "name": "CSE322 FLAT",
+      "time": "2025-09-12T10:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/cse322",
+      "notes": "FLAT Class 2 - Priyanka Gotter - Friday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.895329"
+    },
+    {
+      "id": 23,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-12T13:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytical Skills-II - Abhishek Raj - Friday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.897327"
+    },
+    {
+      "id": 24,
+      "name": "PEA306 Analytics",
+      "time": "2025-09-12T14:00:00",
+      "reminder_minutes": 10,
+      "url": "https://myclass.lpu.in/pea306",
+      "notes": "Analytics Class 2 - Abhishek Raj - Friday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.899913"
+    },
+    {
+      "id": 25,
+      "name": "PETS13 DS-II",
+      "time": "2025-09-12T16:00:00",
+      "reminder_minutes": 15,
+      "url": "https://myclass.lpu.in/pets13",
+      "notes": "DS Evening - Alok Kumar - Friday",
+      "reminded": false,
+      "created_at": "2025-09-11T19:33:30.902528"
+    }
+  ]
+}
