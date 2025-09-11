@@ -1,0 +1,114 @@
+{
+  "1226738360": {
+    "Monday": [
+      {
+        "time": "09:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "10:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "11:00",
+        "code": "PETS13"
+      },
+      {
+        "time": "01:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "02:00",
+        "code": "PEA306"
+      }
+    ],
+    "Tuesday": [
+      {
+        "time": "09:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "10:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "11:00",
+        "code": "PETS13"
+      },
+      {
+        "time": "01:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "02:00",
+        "code": "PEA306"
+      }
+    ],
+    "Wednesday": [
+      {
+        "time": "09:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "10:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "11:00",
+        "code": "PETS13"
+      },
+      {
+        "time": "01:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "02:00",
+        "code": "PEA306"
+      }
+    ],
+    "Thursday": [
+      {
+        "time": "09:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "10:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "01:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "02:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "04:00",
+        "code": "PETS13"
+      }
+    ],
+    "Friday": [
+      {
+        "time": "09:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "10:00",
+        "code": "CSE322"
+      },
+      {
+        "time": "01:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "02:00",
+        "code": "PEA306"
+      },
+      {
+        "time": "04:00",
+        "code": "PETS13"
+      }
+    ]
+  }
+}

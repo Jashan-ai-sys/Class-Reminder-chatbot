@@ -1,0 +1,7 @@
+python-telegram-bot
+ics
+pytz
+pdfplumber
+Flask
+Flask-Cors
+gunicorn
