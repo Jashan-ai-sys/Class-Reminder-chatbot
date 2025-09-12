@@ -1383,7 +1383,18 @@ def save_google_tokens(tokens):
 
 async def connect_calendar_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Starts the Google Calendar authorization flow."""
-    flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
+    
+    # Load the credentials from the environment variable
+    client_secrets_str = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
+    if not client_secrets_str:
+        logger.error("GOOGLE_CLIENT_SECRET_JSON environment variable not set.")
+        await update.message.reply_text("Server configuration error. Could not find Google credentials.")
+        return
+
+    # Use from_client_config to load from the variable's content
+    client_config = json.loads(client_secrets_str)
+    flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
+    
     flow.redirect_uri = 'http://localhost:8080/' # Must match the one in your Google Cloud Console
     
     # Generate the authorization URL
