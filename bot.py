@@ -13,6 +13,7 @@ import pickle
 import pdfplumber
 import re
 import io
+from telegram.ext import CallbackContext
 from telegram import WebAppInfo
 from telegram.ext import (
     Application,
@@ -1468,6 +1469,9 @@ async def handle_google_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception as e:
         logger.error(f"Error handling Google callback: {e}")
         await update.message.reply_text("❌ An error occurred during authorization. Please try again by running /connect_calendar.")
+async def check_reminders_job(context: CallbackContext):
+    await bot.check_reminders()
+
 def main():
     """Start the bot."""
     if not BOT_TOKEN:
@@ -1501,10 +1505,10 @@ def main():
     application.add_handler(CommandHandler("export", export_command))
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
-    
+    application.job_queue.run_repeating(check_reminders_job, interval=60)
     # Start the reminder checking loop in the background
     bot.running = True
-    asyncio.create_task(bot.check_reminders())
+    
     
     logger.info("Bot is starting...")
     
