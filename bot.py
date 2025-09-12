@@ -1,3 +1,5 @@
+# ============== CORE PYTHON LIBRARIES ==============
+import asyncio
 import logging
 import json
 import os
@@ -11,7 +13,15 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ============== TELEGRAM IMPORTS ==============
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, File
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters
+)
 from telegram.constants import ParseMode
 
 # ============== GOOGLE API IMPORTS ==============
@@ -25,6 +35,13 @@ from googleapiclient.errors import HttpError
 import pytz
 from ics import Calendar, Event
 import pdfplumber
+
+# ============== OPTIONAL COMPATIBILITY IMPORTS ==============
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    pass
 
 # Configure logging
 logging.basicConfig(
