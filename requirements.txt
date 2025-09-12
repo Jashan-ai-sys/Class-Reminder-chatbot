@@ -1,5 +1,5 @@
-# Core Telegram Bot library
-python-telegram-bot
+python-telegram-bot[job-queue]==20.3
+
 
 # For the Flask API Server and running it
 Flask
