@@ -1,0 +1,10 @@
+# Secret files
+client_secret.json
+google_tokens.pickle
+
+# User data files
+lpu_classes.json
+schedule_templates.json
+
+# Python cache
+__pycache__/
