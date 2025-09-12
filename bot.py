@@ -1384,26 +1384,23 @@ def save_google_tokens(tokens):
 async def connect_calendar_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Starts the Google Calendar authorization flow."""
     
-    # Load the credentials from the environment variable
-    client_secrets_str = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
-    if not client_secrets_str:
+    # Get the Base64 encoded string from the environment variable
+    base64_secrets = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
+    if not base64_secrets:
         logger.error("GOOGLE_CLIENT_SECRET_JSON environment variable not set.")
         await update.message.reply_text("Server configuration error. Could not find Google credentials.")
         return
 
-    # Use from_client_config to load from the variable's content
+    # Decode the Base64 string back into a normal JSON string
+    client_secrets_str = base64.b64decode(base64_secrets).decode('utf-8')
     client_config = json.loads(client_secrets_str)
+    
     flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
+    flow.redirect_uri = 'http://localhost:8080/'
     
-    flow.redirect_uri = 'http://localhost:8080/' # Must match the one in your Google Cloud Console
-    
-    # Generate the authorization URL
     authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true'
+        access_type='offline', include_granted_scopes='true'
     )
-    
-    # Store the flow's state to verify the callback
     context.user_data['google_auth_state'] = state
     
     await update.message.reply_text(
@@ -1417,22 +1414,23 @@ async def connect_calendar_command(update: Update, context: ContextTypes.DEFAULT
 
 async def handle_google_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the callback URL pasted by the user."""
-    # Check if we are expecting a callback
     if 'google_auth_state' not in context.user_data:
-        return # Ignore messages that are not part of the flow
+        return
 
     url_text = update.message.text
     state = context.user_data.pop('google_auth_state')
 
     try:
-        flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES, state=state)
+        base64_secrets = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
+        client_secrets_str = base64.b64decode(base64_secrets).decode('utf-8')
+        client_config = json.loads(client_secrets_str)
+
+        flow = InstalledAppFlow.from_client_config(client_config, SCOPES, state=state)
         flow.redirect_uri = 'http://localhost:8080/'
         
-        # Exchange the authorization code from the URL for a token
         flow.fetch_token(authorization_response=url_text)
         credentials = flow.credentials
 
-        # Save the credentials for the user
         user_id = str(update.effective_user.id)
         tokens = load_google_tokens()
         tokens[user_id] = credentials
