@@ -1,4 +1,6 @@
 
+print("Bot is starting...")
+
 #!/usr/bin/env python3
 """
 LPU Class Notification Bot - Complete Version with AddTimetable Command
