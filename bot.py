@@ -8,6 +8,7 @@ import io
 import pickle
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+import base64
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
