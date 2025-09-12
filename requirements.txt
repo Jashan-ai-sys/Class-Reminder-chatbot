@@ -1,7 +1,23 @@
-python-telegram-bot==20.3
-ics
-pytz
-pdfplumber
+# Core Telegram Bot library
+python-telegram-bot
+
+# For the Flask API Server and running it
 Flask
 Flask-Cors
 gunicorn
+werkzeug
+
+# For Google Calendar API Integration
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+
+# For PDF parsing
+pdfplumber
+
+# For iCalendar (.ics) file export
+ics
+pytz
+
+# For Jupyter/IPython notebook compatibility (optional)
+nest_asyncio
