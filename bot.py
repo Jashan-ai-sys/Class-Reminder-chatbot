@@ -29,9 +29,17 @@ import asyncio
 import logging
 import json
 import os
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import Application
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1' 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+PORT = int(os.getenv("PORT", 5000))
+APP_URL = os.getenv("APP_URL")
+application = Application.builder().token(BOT_TOKEN).build()
+flask_app = Flask(__name__)
 
 # Try to import nest_asyncio for Jupyter compatibility
 try:
@@ -53,7 +61,6 @@ logger = logging.getLogger(__name__)
 
 # ==================== CONFIGURATION ====================
 # IMPORTANT: Replace with your actual bot token from BotFather
-BOT_TOKEN = "8325917697:AAEbz3_pmzTjbZQ17Nc53c1tPurwK2Cb384"
 CLASSES_FILE = "lpu_classes.json"
 TEMPLATES_FILE = "schedule_templates.json"
 
@@ -1464,8 +1471,6 @@ def main():
     if not BOT_TOKEN:
         logger.critical("BOT_TOKEN is not set. Please add your token to the script.")
         return
-
-    application = Application.builder().token(BOT_TOKEN).build()
     bot.application = application # Give bot instance access to application
     application.add_handler(setup_handler)
     application.add_handler(CommandHandler("editschedule", editschedule_command))
@@ -1500,12 +1505,28 @@ def main():
     asyncio.create_task(bot.check_reminders())
     
     logger.info("Bot is starting...")
-    # Run the bot until the user presses Ctrl-C
-    application.run_polling()
+    
     
     # On shutdown
     bot.running = False
     logger.info("Bot is shutting down.")
+# Webhook route (Telegram sends updates here)
+@flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "ok"
 
+# Test home route
+@flask_app.route("/")
+def home():
+    return "Bot is running ✅"
 if __name__ == '__main__':
-    main()
+    main()   # initialize handlers etc.
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=BOT_TOKEN,
+        webhook_url=f"{APP_URL}{BOT_TOKEN}"
+    )
+    
