@@ -1,61 +1,30 @@
-
-print("Bot is starting...")
-
-#!/usr/bin/env python3
-"""
-LPU Class Notification Bot - Complete Version with AddTimetable Command
-Based on your actual timetable PDF (VID: 12313773)
-"""
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-import pickle
-import pdfplumber
-import re
-import io
-from telegram.ext import CallbackContext
-from telegram import WebAppInfo
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    ConversationHandler, # Add this
-    MessageHandler,      # Add this
-    filters              # Add this
-)
-import pytz
-from ics import Calendar, Event
-import asyncio
 import logging
 import json
 import os
-from flask import Flask, request
-from telegram import Update
-from telegram.ext import Application
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1' 
+import re
+import io
+import pickle
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-print("BOT_TOKEN loaded:", BOT_TOKEN[:10] if BOT_TOKEN else "None")
 
-PORT = int(os.getenv("PORT", 5000))
-APP_URL = os.getenv("APP_URL")
-application = Application.builder().token(BOT_TOKEN).build()
-flask_app = Flask(__name__)
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# Try to import nest_asyncio for Jupyter compatibility
-try:
-    import nest_asyncio
-    nest_asyncio.apply()
-except ImportError:
-    pass
-
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+# ============== TELEGRAM IMPORTS ==============
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, File
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from telegram.constants import ParseMode
+
+# ============== GOOGLE API IMPORTS ==============
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+# ============== OTHER THIRD-PARTY IMPORTS ==============
+import pytz
+from ics import Calendar, Event
+import pdfplumber
 
 # Configure logging
 logging.basicConfig(
@@ -64,10 +33,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+print("BOT_TOKEN loaded:", BOT_TOKEN[:10] if BOT_TOKEN else "None")
+PORT = int(os.getenv("PORT", 8080))
+APP_URL = os.getenv("APP_URL")
+application = Application.builder().token(BOT_TOKEN).build()
+
 # ==================== CONFIGURATION ====================
 # IMPORTANT: Replace with your actual bot token from BotFather
 CLASSES_FILE = "lpu_classes.json"
 TEMPLATES_FILE = "schedule_templates.json"
+TOKEN_STORAGE_FILE = "google_tokens.pickle"
 
 # LPU Course mappings for better display
 COURSE_INFO = {
@@ -255,40 +232,6 @@ class LPUClassBot:
         
         self.save_classes()
         logger.info("Old classes cleaned up.")
-
-    async def check_reminders(self):
-        """Check for upcoming classes and send reminders"""
-        # Run cleanup once on startup
-        self.cleanup_old_classes()
-        
-        while self.running:
-            try:
-                now = datetime.now()
-                for user_id_str, user_classes in list(self.classes.items()):
-                    user_id = int(user_id_str)
-                    for cls in user_classes:
-                        if cls.get('reminded', False):
-                            continue
-                        
-                        try:
-                            class_time = datetime.fromisoformat(cls["time"])
-                            reminder_minutes = cls.get("reminder_minutes", 15)
-                            reminder_time = class_time - timedelta(minutes=reminder_minutes)
-                            
-                            if now >= reminder_time and now < class_time:
-                                await self.send_reminder(user_id, cls)
-                                cls['reminded'] = True
-                                self.save_classes()
-                        except Exception as e:
-                            logger.error(f"Error processing reminder for user {user_id}, class {cls.get('id')}: {e}")
-                
-                # Sleep for 60 seconds
-                await asyncio.sleep(60)
-
-            except Exception as e:
-                logger.error(f"Major error in reminder loop: {e}")
-                await asyncio.sleep(60) # Wait before retrying
-
     async def send_reminder(self, user_id: int, class_data: Dict, is_test: bool = False):
         """Send reminder message to user"""
         try:
@@ -1471,8 +1414,7 @@ async def handle_google_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception as e:
         logger.error(f"Error handling Google callback: {e}")
         await update.message.reply_text("❌ An error occurred during authorization. Please try again by running /connect_calendar.")
-async def check_reminders_job(context: CallbackContext):
-    await bot.check_reminders()
+
 
 def main():
     """Start the bot."""
@@ -1490,7 +1432,6 @@ def main():
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     # Command Handlers
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("add", add_class_command))
     application.add_handler(CommandHandler("list", list_classes_command))
@@ -1502,39 +1443,18 @@ def main():
     application.add_handler(CommandHandler("clear", clear_classes_command))
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("test", test_command))
-    application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("test", test_command))
     application.add_handler(CommandHandler("export", export_command))
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
-    application.job_queue.run_repeating(check_reminders_job, interval=60)
-    # Start the reminder checking loop in the background
-    bot.running = True
-    
-    
-    logger.info("Bot is starting...")
-    
-    
-    # On shutdown
-    bot.running = False
-    logger.info("Bot is shutting down.")
-# Webhook route (Telegram sends updates here)
-@flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put_nowait(update)
-    return "ok"
-
-# Test home route
-@flask_app.route("/")
-def home():
-    return "Bot is running ✅"
-if __name__ == '__main__':
-    main()   # initialize handlers etc.
+    logger.info(f"Starting webhook on port {PORT}")
     application.run_webhook(
         listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 8443)),
+        port=PORT,
         url_path=BOT_TOKEN,
         webhook_url=f"{APP_URL}{BOT_TOKEN}"
     )
+
+if __name__ == '__main__':
+    main()   # initialize handlers etc.
+    
     
