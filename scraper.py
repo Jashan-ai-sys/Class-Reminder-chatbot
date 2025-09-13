@@ -1,8 +1,12 @@
 import os
 import requests
+import urllib3
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
+
+# Disable the insecure request warning that comes with verify=False
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CONFIGURATION (Load from Environment Variables) ---
 LPU_USERNAME = os.getenv("LPU_USERNAME")
@@ -11,23 +15,25 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 # --- STATE FILE ---
-# This file will remember which notifications have been sent
 SENT_NOTIFICATIONS_FILE = "sent_notifications.json"
 
 # --- URLS (You must find these by inspecting the MyClass website) ---
-LOGIN_URL = "https://myclass.lpu.in"
-SCHEDULE_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/tla/m.jsp"
+# ---> IMPORTANT: Replace these with the real URLs you find!
+LOGIN_URL = "https://lovelyprofessionaluniversity.codetantra.com/r/l/p"
+SCHEDULE_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/tla/m.jsp" # The page with the calendar view
 
 def load_sent_notifications():
     """Loads the list of notifications that have already been sent today."""
     if not os.path.exists(SENT_NOTIFICATIONS_FILE):
         return []
-    with open(SENT_NOTIFICATIONS_FILE, 'r') as f:
-        data = json.load(f)
-        # If the file is from a previous day, clear it
-        if data.get("date") != datetime.now().strftime('%Y-%m-%d'):
-            return []
-        return data.get("sent_list", [])
+    try:
+        with open(SENT_NOTIFICATIONS_FILE, 'r') as f:
+            data = json.load(f)
+            if data.get("date") != datetime.now().strftime('%Y-%m-%d'):
+                return []
+            return data.get("sent_list", [])
+    except json.JSONDecodeError:
+        return []
 
 def save_sent_notifications(sent_list):
     """Saves the list of sent notifications for today."""
@@ -40,7 +46,22 @@ def save_sent_notifications(sent_list):
 
 def send_telegram_notification(message: str):
     """Sends a message to your Telegram via the bot."""
-    # ... (This function remains the same as before) ...
+    if not all([BOT_TOKEN, CHAT_ID]):
+        print("ERROR: Bot Token or Chat ID is not set.")
+        return
+        
+    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': message,
+        'parse_mode': 'Markdown'
+    }
+    try:
+        response = requests.post(api_url, json=payload)
+        response.raise_for_status()
+        print("Notification sent successfully!")
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending notification: {e}")
 
 def scrape_and_check_reminders():
     """Scrapes the schedule and sends notifications for classes starting soon."""
@@ -52,17 +73,25 @@ def scrape_and_check_reminders():
         sent_today = load_sent_notifications()
         
         with requests.Session() as session:
-            # 1. Log In (Same as before)
-            session.post(LOGIN_URL, data={'user': LPU_USERNAME, 'pass': LPU_PASSWORD})
+            # 1. Log In to MyClass
+            print("Attempting to log in...")
+            login_payload = {'user': LPU_USERNAME, 'pass': LPU_PASSWORD}
+            response = session.post(LOGIN_URL, data=login_payload, verify=False)
             
-            # 2. Fetch schedule page
-            response = session.get(SCHEDULE_URL)
-            soup = BeautifulSoup(response.text, 'html.parser')
+            # Check if login was successful
+            if "Dashboard" not in response.text:
+                raise Exception("Login to MyClass failed. Please check your credentials.")
+            print("Login successful.")
 
-            # 3. Parse events
+            # 2. Fetch the schedule page
+            print("Fetching schedule page...")
+            response = session.get(SCHEDULE_URL, verify=False)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # 3. Parse events using the correct class names
             event_contents = soup.find_all('div', class_='fc-content')
             if not event_contents:
-                print("No class events found on page.")
+                print("No class events found on schedule page.")
                 return
 
             for content in event_contents:
@@ -70,37 +99,27 @@ def scrape_and_check_reminders():
                 title_element = content.find('div', class_='fc-title')
 
                 if time_element and title_element:
-                    time_str = time_element.text.strip() # e.g., "11:00"
+                    time_str = time_element.text.strip()
                     full_title = title_element.text.strip()
-                    
-                    # Create a unique ID for this class today
                     notification_id = f"{datetime.now().strftime('%Y-%m-%d')}_{time_str}"
                     
-                    # Skip if we've already sent a notification for this class today
                     if notification_id in sent_today:
                         continue
                         
-                    # --- The Core Logic ---
-                    # Convert class time string to a datetime object for today
                     class_time = datetime.strptime(f"{datetime.now().strftime('%Y-%m-%d')} {time_str}", "%Y-%m-%d %H:%M")
                     time_now = datetime.now()
-                    
                     minutes_until_class = (class_time - time_now).total_seconds() / 60
                     
-                    # Check if the class is between 10 and 15 minutes away
                     if 10 <= minutes_until_class < 16:
                         print(f"Sending notification for {full_title} at {time_str}")
                         message = f"🔔 *Class Reminder!* \n\nYour class **{full_title}** is starting in about 15 minutes."
                         send_telegram_notification(message)
                         
-                        # Add to the sent list and save
                         sent_today.append(notification_id)
                         save_sent_notifications(sent_today)
-
     except Exception as e:
         print(f"An error occurred: {e}")
-        # To avoid spamming on errors, only send an error notification once per hour
-        # (This is an advanced concept, for now we will just print it)
+        send_telegram_notification(f"⚠️ **Scraper Error:**\nCould not fetch schedule. Reason: {e}")
 
 if __name__ == "__main__":
     scrape_and_check_reminders()
