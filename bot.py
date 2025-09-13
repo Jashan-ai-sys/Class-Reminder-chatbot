@@ -1192,31 +1192,30 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error processing web app data: {e}")
         await update.message.reply_text("An error occurred while saving your schedule.")
 async def generate_schedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generates classes from the user's template and adds them to Google Calendar."""
+    """Generates classes from the template, syncs to Google Calendar, and avoids duplicates."""
     user_id = str(update.effective_user.id)
     templates = load_templates()
     user_template = templates.get(user_id)
 
     if not user_template:
         await update.message.reply_text(
-            "You haven't saved a schedule template yet. Please use `/editschedule` to set one up first."
+            "You haven't saved a schedule template yet. Please use the PDF upload or `/editschedule` to set one up first."
         )
         return
 
-    await update.message.reply_text("Generating your schedule and syncing with Google Calendar...")
+    await update.message.reply_text("Generating schedule and syncing with Google Calendar (checking for duplicates)...")
     
-    # --- NEW: Google Calendar Integration ---
+    # --- Google Calendar Integration ---
     google_creds = None
     tokens = load_google_tokens()
     if user_id in tokens:
         google_creds = tokens[user_id]
     
-    # Check if we have valid credentials
     if not google_creds or not google_creds.valid:
         if google_creds and google_creds.expired and google_creds.refresh_token:
             google_creds.refresh(Request())
         else:
-            google_creds = None # Invalidate if we can't refresh
+            google_creds = None
     
     google_service = None
     if google_creds:
@@ -1225,70 +1224,71 @@ async def generate_schedule_command(update: Update, context: ContextTypes.DEFAUL
         except HttpError as error:
             logger.error(f"An error occurred building Google service: {error}")
             await update.message.reply_text("Could not connect to Google Calendar. Please try running /connect_calendar again.")
-    # --- END NEW ---
-
-    today = datetime.now()
+    
+    today = datetime.now(pytz.timezone('Asia/Kolkata'))
     start_of_this_week = today - timedelta(days=today.weekday())
-    day_map = {
-        'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 
-        'Thursday': 3, 'Friday': 4, 'Saturday': 5, 'Sunday': 6
-    }
+    day_map = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3, 'Friday': 4}
     
     added_count = 0
     google_added_count = 0
+    google_skipped_count = 0 # New counter for duplicates
+
     for day, classes in user_template.items():
-        if day not in day_map:
-            continue
+        if day not in day_map: continue
         
         for class_info in classes:
             try:
-                # Calculate the class time
                 day_offset = day_map[day]
                 class_date = start_of_this_week + timedelta(days=day_offset)
                 if class_date.date() < today.date():
-                    class_date += timedelta(weeks=1)
+                    class_date += timedelta(weeks=7) # Schedule for next week
 
                 hour, minute = map(int, class_info['time'].split(':'))
                 start_time = class_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                end_time = start_time + timedelta(minutes=55) # Assume 55-min class
+                end_time = start_time + timedelta(minutes=55)
 
                 # 1. Add class to the bot's internal schedule
-                class_data = {
-                    "name": class_info['code'],
-                    "time": start_time.isoformat(),
-                    "reminder_minutes": 15,
-                    "url": "",
-                    "notes": f"Class on {day}"
-                }
+                class_data = {"name": class_info['code'], "time": start_time.isoformat(), "reminder_minutes": 15, "url": "", "notes": f"Class on {day}"}
                 bot.add_class(update.effective_user.id, class_data)
                 added_count += 1
                 
-                # 2. --- NEW: Add class to Google Calendar ---
+                # 2. Add class to Google Calendar
                 if google_service:
                     event_body = {
                         'summary': class_info['code'],
                         'location': 'MyClass LPU',
                         'description': f"Course: {class_info.get('notes', 'N/A')}",
-                        'start': {
-                            'dateTime': start_time.isoformat(),
-                            'timeZone': 'Asia/Kolkata',
-                        },
-                        'end': {
-                            'dateTime': end_time.isoformat(),
-                            'timeZone': 'Asia/Kolkata',
-                        },
+                        'start': {'dateTime': start_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
+                        'end': {'dateTime': end_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
                     }
-                    google_service.events().insert(calendarId='primary', body=event_body).execute()
-                    google_added_count += 1
-                # --- END NEW ---
+                    
+                    # --- NEW: Check for existing events before creating ---
+                    events_result = google_service.events().list(
+                        calendarId='primary',
+                        timeMin=start_time.isoformat(),
+                        timeMax=end_time.isoformat(),
+                        q=class_info['code'], # Search for the event name
+                        singleEvents=True
+                    ).execute()
+                    existing_events = events_result.get('items', [])
+
+                    if not existing_events:
+                        # If no event was found, create a new one
+                        google_service.events().insert(calendarId='primary', body=event_body).execute()
+                        google_added_count += 1
+                    else:
+                        # If an event already exists, skip it
+                        google_skipped_count += 1
+                    # --- END NEW ---
 
             except Exception as e:
                 logger.error(f"Error generating class from template {class_info}: {e}")
 
     await update.message.reply_text(
-        f"✅ Done!\n\n"
-        f"I have generated {added_count} classes for bot reminders.\n"
-        f"I have synced {google_added_count} classes with your Google Calendar."
+        f"✅ **Sync Complete!**\n\n"
+        f"Bot reminders generated: {added_count}\n"
+        f"New events synced to Google Calendar: {google_added_count}\n"
+        f"Duplicate events skipped: {google_skipped_count}"
     )
 async def handle_pdf_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Processes an uploaded PDF timetable."""

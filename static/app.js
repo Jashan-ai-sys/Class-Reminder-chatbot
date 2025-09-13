@@ -3,7 +3,7 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 
 // IMPORTANT: Replace this with the URL of your deployed server.py from Part 1
-const API_SERVER_URL = "https://your-flask-server-url.com"; 
+const API_SERVER_URL = "https://class-reminder-chatbot-pzy8y01tv-jashan-ai-sys-projects.vercel.app"; 
 
 const timeSlots = ["09:00", "10:00", "11:00", "13:00", "14:00", "16:00"];
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
