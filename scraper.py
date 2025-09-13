@@ -97,13 +97,16 @@ def scrape_and_check_reminders():
                 print("Home page snippet:")
                 print(home_resp.text[:500])  # Debug snippet
 
-            # 3. Now fetch the schedule page
             print("Fetching schedule page...")
             schedule_response = session.get(SCHEDULE_URL, verify=False)
 
-            if "My Schedule" not in schedule_response.text:
-                raise Exception("Login or navigation to schedule page failed.")
-            print("Successfully accessed schedule page.")
+            print("Schedule page status:", schedule_response.status_code)
+            print("Schedule page snippet:")
+            print(schedule_response.text[:500])  # show first 500 chars
+
+            if schedule_response.status_code != 200:
+                raise Exception("Failed to load schedule page.")
+
 
             # 4. Parse schedule
             soup = BeautifulSoup(schedule_response.text, "html.parser")
