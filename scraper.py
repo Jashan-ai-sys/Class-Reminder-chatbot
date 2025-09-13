@@ -20,12 +20,10 @@ SENT_NOTIFICATIONS_FILE = "sent_notifications.json"
 # --- LPU URLS ---
 MYCLASS_HOME_URL = "https://myclass.lpu.in/"
 LOGIN_PROCESS_URL = "https://lovelyprofessionaluniversity.codetantra.com/r/l/p"
-HOME_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/home.jsp"
 SCHEDULE_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/tla/m.jsp"
 
 
 def load_sent_notifications():
-    """Loads the list of notifications that have already been sent today."""
     if not os.path.exists(SENT_NOTIFICATIONS_FILE):
         return []
     try:
@@ -39,7 +37,6 @@ def load_sent_notifications():
 
 
 def save_sent_notifications(sent_list):
-    """Saves the list of sent notifications for today."""
     data = {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "sent_list": sent_list,
@@ -49,7 +46,6 @@ def save_sent_notifications(sent_list):
 
 
 def send_telegram_notification(message: str):
-    """Sends a message to your Telegram via the bot."""
     if not all([BOT_TOKEN, CHAT_ID]):
         print("ERROR: Bot Token or Chat ID is not set.")
         return
@@ -69,7 +65,6 @@ def send_telegram_notification(message: str):
 
 
 def scrape_and_check_reminders():
-    """Logs into CodeTantra and checks for upcoming classes."""
     if not all([LPU_USERNAME, LPU_PASSWORD, BOT_TOKEN, CHAT_ID]):
         print("FATAL ERROR: Environment variables are missing.")
         return
@@ -89,17 +84,20 @@ def scrape_and_check_reminders():
                 LOGIN_PROCESS_URL, data=login_payload, verify=False, allow_redirects=False
             )
 
-            # 3. Follow redirect to home.jsp
-            if login_response.status_code == 303 and "Location" in login_response.headers:
-                redirect_url = login_response.headers["Location"]
-                if not redirect_url.startswith("http"):
-                    redirect_url = (
-                        "https://lovelyprofessionaluniversity.codetantra.com" + redirect_url
-                    )
-                print(f"Following redirect to {redirect_url}")
-                session.get(redirect_url, verify=False)
+            print("Login status:", login_response.status_code)
+            print("Login headers:", login_response.headers)
 
-            # 4. Now fetch the schedule page
+            if login_response.status_code in (302, 303):
+                redirect_url = login_response.headers.get("Location", "")
+                if not redirect_url.startswith("http"):
+                    redirect_url = "https://lovelyprofessionaluniversity.codetantra.com" + redirect_url
+                print(f"Following redirect to {redirect_url}")
+                home_resp = session.get(redirect_url, verify=False)
+                print("Home page status:", home_resp.status_code)
+                print("Home page snippet:")
+                print(home_resp.text[:500])  # Debug snippet
+
+            # 3. Now fetch the schedule page
             print("Fetching schedule page...")
             schedule_response = session.get(SCHEDULE_URL, verify=False)
 
@@ -107,7 +105,7 @@ def scrape_and_check_reminders():
                 raise Exception("Login or navigation to schedule page failed.")
             print("Successfully accessed schedule page.")
 
-            # 5. Parse schedule
+            # 4. Parse schedule
             soup = BeautifulSoup(schedule_response.text, "html.parser")
             event_contents = soup.find_all("div", class_="fc-content")
 
@@ -135,7 +133,10 @@ def scrape_and_check_reminders():
 
                     if 10 <= minutes_until_class < 16:
                         print(f"Sending notification for '{full_title}'")
-                        message = f"🔔 *Class Reminder!* \n\nYour class **{full_title}** is starting in about 15 minutes."
+                        message = (
+                            f"🔔 *Class Reminder!* \n\nYour class **{full_title}** "
+                            f"is starting in about 15 minutes."
+                        )
                         send_telegram_notification(message)
 
                         sent_today.append(notification_id)
