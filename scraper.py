@@ -17,10 +17,11 @@ CHAT_ID = os.getenv("CHAT_ID")
 # --- STATE FILE ---
 SENT_NOTIFICATIONS_FILE = "sent_notifications.json"
 
-# --- URLS (You must find these by inspecting the MyClass website) ---
-# ---> IMPORTANT: Replace these with the real URLs you find!
-LOGIN_URL = "https://lovelyprofessionaluniversity.codetantra.com/r/l/p"
-SCHEDULE_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/tla/m.jsp" # The page with the calendar view
+# --- LPU URLS ---
+# These are the URLs involved in the login and schedule process
+MYCLASS_HOME_URL = "https://myclass.lpu.in/"
+LOGIN_PROCESS_URL = "https://lovelyprofessionaluniversity.codetantra.com/r/l/p"
+SCHEDULE_URL = "https://myclass.lpu.in/schedule"
 
 def load_sent_notifications():
     """Loads the list of notifications that have already been sent today."""
@@ -29,10 +30,11 @@ def load_sent_notifications():
     try:
         with open(SENT_NOTIFICATIONS_FILE, 'r') as f:
             data = json.load(f)
+            # If the file is from a previous day, clear it
             if data.get("date") != datetime.now().strftime('%Y-%m-%d'):
                 return []
             return data.get("sent_list", [])
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, FileNotFoundError):
         return []
 
 def save_sent_notifications(sent_list):
@@ -57,14 +59,14 @@ def send_telegram_notification(message: str):
         'parse_mode': 'Markdown'
     }
     try:
-        response = requests.post(api_url, json=payload)
+        response = requests.post(api_url, json=payload, timeout=10)
         response.raise_for_status()
         print("Notification sent successfully!")
     except requests.exceptions.RequestException as e:
         print(f"Error sending notification: {e}")
 
 def scrape_and_check_reminders():
-    """Scrapes the schedule and sends notifications for classes starting soon."""
+    """Logs into MyClass using the redirect flow and checks for upcoming classes."""
     if not all([LPU_USERNAME, LPU_PASSWORD, BOT_TOKEN, CHAT_ID]):
         print("FATAL ERROR: Environment variables are missing.")
         return
@@ -73,25 +75,32 @@ def scrape_and_check_reminders():
         sent_today = load_sent_notifications()
         
         with requests.Session() as session:
-            # 1. Log In to MyClass
-            print("Attempting to log in...")
-            login_payload = {'user': LPU_USERNAME, 'pass': LPU_PASSWORD}
-            response = session.post(LOGIN_URL, data=login_payload, verify=False)
+            # 1. Initialize session at MyClass to start the login process
+            print("Initializing session at myclass.lpu.in...")
+            session.get(MYCLASS_HOME_URL, verify=False)
             
-            # Check if login was successful
-            if "Dashboard" not in response.text:
-                raise Exception("Login to MyClass failed. Please check your credentials.")
-            print("Login successful.")
+            # 2. Authenticate via the central CodeTantra login page
+            print("Authenticating via central login...")
+            login_payload = {
+                'i': LPU_USERNAME,
+                'p': LPU_PASSWORD,
+            }
+            login_response = session.post(LOGIN_PROCESS_URL, data=login_payload, verify=False)
+            
+            # 3. Now that the session is authenticated, go to the schedule page on MyClass
+            print("Fetching schedule page from MyClass...")
+            schedule_response = session.get(SCHEDULE_URL, verify=False)
 
-            # 2. Fetch the schedule page
-            print("Fetching schedule page...")
-            response = session.get(SCHEDULE_URL, verify=False)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # 3. Parse events using the correct class names
+            if "My Schedule" not in schedule_response.text:
+                raise Exception("Login or navigation to schedule page failed.")
+            print("Successfully accessed schedule page.")
+
+            # 4. Parse the schedule HTML
+            soup = BeautifulSoup(schedule_response.text, 'html.parser')
             event_contents = soup.find_all('div', class_='fc-content')
+            
             if not event_contents:
-                print("No class events found on schedule page.")
+                print("No class events found on the schedule page.")
                 return
 
             for content in event_contents:
@@ -111,15 +120,16 @@ def scrape_and_check_reminders():
                     minutes_until_class = (class_time - time_now).total_seconds() / 60
                     
                     if 10 <= minutes_until_class < 16:
-                        print(f"Sending notification for {full_title} at {time_str}")
+                        print(f"Sending notification for '{full_title}'")
                         message = f"🔔 *Class Reminder!* \n\nYour class **{full_title}** is starting in about 15 minutes."
                         send_telegram_notification(message)
                         
                         sent_today.append(notification_id)
                         save_sent_notifications(sent_today)
+
     except Exception as e:
         print(f"An error occurred: {e}")
-        send_telegram_notification(f"⚠️ **Scraper Error:**\nCould not fetch schedule. Reason: {e}")
+        send_telegram_notification(f"⚠️ **Scraper Error:**\nCould not fetch your daily schedule. Reason: {e}")
 
 if __name__ == "__main__":
     scrape_and_check_reminders()
