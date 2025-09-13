@@ -21,7 +21,7 @@ SENT_NOTIFICATIONS_FILE = "sent_notifications.json"
 # These are the URLs involved in the login and schedule process
 MYCLASS_HOME_URL = "https://myclass.lpu.in/"
 LOGIN_PROCESS_URL = "https://lovelyprofessionaluniversity.codetantra.com/r/l/p"
-SCHEDULE_URL = "https://myclass.lpu.in/schedule"
+SCHEDULE_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/tla/m.jsp"
 
 def load_sent_notifications():
     """Loads the list of notifications that have already been sent today."""
