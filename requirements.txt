@@ -1,6 +1,7 @@
 python-telegram-bot[job-queue,webhooks]==20.5
 
 requests==2.31.0
+beautifulsoup4
 
 
 # For the Flask API Server and running it
