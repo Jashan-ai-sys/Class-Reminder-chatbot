@@ -1,1 +1,1 @@
-web: python login.py
+web: waitress-serve --host 0.0.0.0 --port $PORT login:app
