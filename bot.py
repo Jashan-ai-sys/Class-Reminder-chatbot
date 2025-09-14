@@ -7,8 +7,19 @@ import re
 import io
 import pickle
 from datetime import datetime, timedelta
+from turtle import update
 from typing import Dict, List, Optional
 import base64
+from scraper import fetch_lpu_classes
+from db_helpers import init_db
+from telegram import Update
+from telegram.ext import CommandHandler, ContextTypes
+from crypto import encrypt_password
+from db_helpers import save_user
+
+init_db()
+
+
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
@@ -79,11 +90,25 @@ COURSE_INFO = {
 
 class LPUClassBot:
     def __init__(self):
-        self.classes = self.load_classes()
+        # self.classes = self.load_classes()
         self.application = None
         self.running = False
-        self.reminder_sent = set()
+        self.reminder_sent = set()  
         self.start_time = datetime.now()
+    async def login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+        frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
+        login_url = f"{frontend_url}?chat_id={chat_id}"
+
+        await update.message.reply_text(
+            f"Click here to log in: [Login Page]({login_url})",
+            parse_mode="Markdown"
+        )
+        reminder_bot = ReminderBot(application)
+        await reminder_bot.schedule_reminders(chat_id)
+
+
+    
 
     def load_classes(self) -> Dict:
         """Load classes from JSON file with error handling"""
@@ -98,6 +123,51 @@ class LPUClassBot:
         except (json.JSONDecodeError, FileNotFoundError) as e:
             logger.error(f"Error loading classes: {e}")
             return {}
+    @staticmethod
+    def format_class(self, cls):
+        start = datetime.fromtimestamp(cls["startTime"] / 1000)
+        end = datetime.fromtimestamp(cls["endTime"] / 1000)
+        title = cls.get("title", "Unknown Class").strip()
+
+        msg = (
+            f"📚 *{title}*\n"
+            f"🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n"
+        )
+        if cls.get("joinUrl"):
+            msg += f"🔗 [Join Class]({cls['joinUrl']})"
+        return msg
+
+    async def schedule_reminders(self, chat_id: int):
+        try:
+            data = fetch_lpu_classes(chat_id)  # ✅ Fetch with user’s chat_id
+            classes = data.get("ref", [])
+
+            now = datetime.now()
+            for cls in classes:
+                start = datetime.fromtimestamp(cls["startTime"] / 1000)
+                remind_time = start - timedelta(minutes=10)
+
+                if remind_time > now:
+                    msg = self.format_class(cls)
+
+                    async def reminder(ctx: ContextTypes.DEFAULT_TYPE):
+                        await ctx.bot.send_message(
+                            chat_id,
+                            f"⏰ Reminder:\n{msg}",
+                            parse_mode="Markdown"
+                        )
+
+                    # ✅ Schedule reminder
+                    self.application.job_queue.run_once(
+                        reminder,
+                        when=(remind_time - now).total_seconds()
+                    )
+
+            print(f"✅ Reminders scheduled for chat_id {chat_id}")
+
+        except Exception as e:
+            print("Error scheduling reminders:", e)
+
 
     def save_classes(self):
         """Save classes to JSON file with backup"""
@@ -301,53 +371,45 @@ bot = LPUClassBot()
 
 # ==================== COMMAND HANDLERS ====================
 
+# In bot.py
+# Make sure to import your new helper function
+from db_helpers import get_user, save_user # Assuming you have these
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced start command with LPU branding"""
-    user_name = update.effective_user.first_name or "Student"
+    """Handles the /start command, routing new users to login and welcoming back existing ones."""
+    user = update.effective_user
+    chat_id = user.id
     
-    welcome_text = f"""
-🎓 *Welcome to LPU Class Bot, {user_name}!*
+    # Check for deep linking parameter (e.g., from a successful login redirect)
+    if context.args and context.args[0] == 'success':
+        await update.message.reply_text("✅ Welcome! You are now logged in. I will start scheduling your class reminders.")
+        # This is the key step after a successful login
+        await bot.schedule_reminders(chat_id)
+        return
 
-Never miss your Code Tantra classes again! Perfect for your LPU timetable.
+    # Check if the user is already in our database
+    db_user = get_user(chat_id)
 
-*🚀 Quick Commands:*
-📚 `/add` - Add new class
-📋 `/list` - View all classes  
-⏰ `/next` - Next class
-🗑️ `/remove ID` - Delete class
-📊 `/today` - Today's classes
-🗓️ `/addtimetable` - Add complete weekly schedule
-❓ `/help` - Full help
+    if db_user:
+        # User is already registered, welcome them back
+        await update.message.reply_text(f"Welcome back, {user.first_name}! I'm already set up to send you reminders. 🚀")
+        await bot.schedule_reminders(chat_id)
+    else:
+        # New user, prompt them to log in
+        frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
+        login_url = f"{frontend_url}?chat_id={chat_id}"
 
-*📖 Quick Add Example:*
-`/add CSE322 FLAT | 2025-09-15 09:00 | 15 | https://myclass.lpu.in/cse322 | Formal Languages - Priyanka Gotter`
+        keyboard = [[
+            InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)
+        ]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-*🎯 Complete Timetable:*
-Use `/addtimetable week` to add your entire weekly schedule automatically!
+        await update.message.reply_text(
+            f"👋 Welcome, {user.first_name}!\n\n"
+            "To get started, please log in with your LPU credentials so I can fetch your class schedule.",
+            reply_markup=reply_markup
+        )
 
-Ready to organize your semester! 🌟
-    """
-    
-    keyboard = [
-        [
-            InlineKeyboardButton("📚 Add Class", callback_data="help_add"),
-            InlineKeyboardButton("📋 My Classes", callback_data="list_classes")
-        ],
-        [
-            InlineKeyboardButton("🗓️ Add Timetable", callback_data="help_addtimetable"),
-            InlineKeyboardButton("⏰ Next Class", callback_data="next_class")
-        ],
-        [
-            InlineKeyboardButton("❓ Help", callback_data="show_help")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        welcome_text, 
-        parse_mode=ParseMode.MARKDOWN, 
-        reply_markup=reply_markup
-    )
 
 async def addtimetable_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Add complete LPU timetable based on the corrected schedule image"""
@@ -1474,13 +1536,11 @@ def main():
     application.add_handler(CommandHandler("export", export_command))
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
-    logger.info(f"Starting webhook on port {PORT}")
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=BOT_TOKEN,
-        webhook_url=f"{APP_URL}{BOT_TOKEN}"
-    )
+    # logger.info(f"Starting webhook on port {PORT}")
+    application.run_polling()
+
+
+
 
 if __name__ == '__main__':
     main()   # initialize handlers etc.

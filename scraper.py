@@ -1,156 +1,127 @@
 import os
+import time
 import requests
-import urllib3
-from bs4 import BeautifulSoup
 from datetime import datetime
-import json
+from dotenv import load_dotenv
+from db_helpers import get_user, save_cookie
+from crypto import decrypt_password
 
-# Disable the insecure request warning that comes with verify=False
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
-# --- CONFIGURATION (Load from Environment Variables) ---
-LPU_USERNAME = os.getenv("LPU_USERNAME")
-LPU_PASSWORD = os.getenv("LPU_PASSWORD")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+load_dotenv()
 
-# --- STATE FILE ---
-SENT_NOTIFICATIONS_FILE = "sent_notifications.json"
+URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 
-# --- LPU URLS ---
-MYCLASS_HOME_URL = "https://myclass.lpu.in/"
-LOGIN_PROCESS_URL = "https://lovelyprofessionaluniversity.codetantra.com/r/l/p"
-SCHEDULE_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/tla/m.jsp"
+def get_user_credentials(chat_id: int):
+    row = get_user(chat_id)
+    if not row:
+        raise RuntimeError("❌ No credentials found. Please login first.")
+    username, password_enc, cookie, cookie_expiry = row
+    password = decrypt_password(password_enc)
+    return username, password, cookie, cookie_expiry
 
 
-def load_sent_notifications():
-    if not os.path.exists(SENT_NOTIFICATIONS_FILE):
-        return []
+def login_and_get_cookie(chat_id: int):
+    username, password, _, _ = get_user_credentials(chat_id)
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
     try:
-        with open(SENT_NOTIFICATIONS_FILE, "r") as f:
-            data = json.load(f)
-            if data.get("date") != datetime.now().strftime("%Y-%m-%d"):
-                return []
-            return data.get("sent_list", [])
-    except (json.JSONDecodeError, FileNotFoundError):
-        return []
+        driver.get("https://myclass.lpu.in")
+
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.NAME, "i")))
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.NAME, "p")))
+
+        driver.find_element(By.NAME, "i").send_keys(username)
+        driver.find_element(By.NAME, "p").send_keys(password)
+        driver.find_element(By.XPATH, "//button[contains(text(),'Login')]").click()
+
+        WebDriverWait(driver, 40).until(EC.presence_of_element_located((By.ID, "cssmenu")))
+        print("✅ Login successful:", driver.current_url)
+
+        cookies = driver.get_cookies()
+        cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+
+        # ✅ Save cookie in DB for reuse
+        save_cookie(chat_id, cookie_str)
+
+        return cookie_str
+
+    finally:
+        driver.quit()
 
 
-def save_sent_notifications(sent_list):
-    data = {
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "sent_list": sent_list,
+def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
+    username, password, cookie, cookie_expiry = get_user_credentials(chat_id)
+
+    if min_ts is None:
+        min_ts = int(time.time() * 1000)
+    if max_ts is None:
+        max_ts = min_ts + 24 * 60 * 60 * 1000
+
+    if not cookie:
+        cookie = login_and_get_cookie(chat_id)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://lovelyprofessionaluniversity.codetantra.com/",
+        "Accept": "application/json, text/plain, */*",
+        "Content-Type": "application/json;charset=UTF-8",
+        "Cookie": cookie,
     }
-    with open(SENT_NOTIFICATIONS_FILE, "w") as f:
-        json.dump(data, f)
 
-
-def send_telegram_notification(message: str):
-    if not all([BOT_TOKEN, CHAT_ID]):
-        print("ERROR: Bot Token or Chat ID is not set.")
-        return
-
-    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown",
+        "minDate": min_ts,
+        "maxDate": max_ts,
+        "filters": {"showSelf": True, "status": "started,scheduled"},
     }
-    try:
-        response = requests.post(api_url, json=payload, timeout=10)
-        response.raise_for_status()
-        print("Notification sent successfully!")
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending notification: {e}")
+
+    r = requests.post(URL, headers=headers, json=payload, verify=False)
+    if r.status_code != 200:
+        raise RuntimeError(f"Fetch failed {r.status_code}: {r.text[:200]}")
+
+    return r.json()
 
 
-def scrape_and_check_reminders():
-    if not all([LPU_USERNAME, LPU_PASSWORD, BOT_TOKEN, CHAT_ID]):
-        print("FATAL ERROR: Environment variables are missing.")
+def print_classes(data):
+    """Pretty print Codetantra classes from API response."""
+    classes = data.get("ref") or data.get("data") or []
+    if not classes:
+        print("🎉 No upcoming classes found.")
         return
 
-    try:
-        sent_today = load_sent_notifications()
+    for cls in classes:
+        title = cls.get("title", "Unknown Class").strip()
+        start = datetime.fromtimestamp(cls["startTime"] / 1000)
+        end = datetime.fromtimestamp(cls["endTime"] / 1000)
+        status = cls.get("status", "")
 
-        with requests.Session() as session:
-            # 1. Initialize session
-            print("Initializing session at myclass.lpu.in...")
-            session.get(MYCLASS_HOME_URL, verify=False)
+        print(f"📚 {title}")
+        print(f"🕘 {start.strftime('%A, %d %B %Y %I:%M %p')} – {end.strftime('%I:%M %p')}")
+        print(f"📌 Status: {status}")
 
-            # 2. Authenticate via CodeTantra login page
-            print("Authenticating via CodeTantra...")
-            login_payload = {"i": LPU_USERNAME, "p": LPU_PASSWORD}
-            login_response = session.post(
-                LOGIN_PROCESS_URL, data=login_payload, verify=False, allow_redirects=False
-            )
+        if cls.get("joinUrl"):
+            print(f"🔗 Join: {cls['joinUrl']}")
 
-            print("Login status:", login_response.status_code)
-            print("Login headers:", login_response.headers)
-
-            if login_response.status_code in (302, 303):
-                redirect_url = login_response.headers.get("Location", "")
-                if not redirect_url.startswith("http"):
-                    redirect_url = "https://lovelyprofessionaluniversity.codetantra.com" + redirect_url
-                print(f"Following redirect to {redirect_url}")
-                home_resp = session.get(redirect_url, verify=False)
-                print("Home page status:", home_resp.status_code)
-                print("Home page snippet:")
-                print(home_resp.text[:500])  # Debug snippet
-
-            print("Fetching schedule page...")
-            schedule_response = session.get(SCHEDULE_URL, verify=False)
-
-            print("Schedule page status:", schedule_response.status_code)
-            print("Schedule page snippet:")
-            print(schedule_response.text[:500])  # show first 500 chars
-
-            if schedule_response.status_code != 200:
-                raise Exception("Failed to load schedule page.")
-
-
-            # 4. Parse schedule
-            soup = BeautifulSoup(schedule_response.text, "html.parser")
-            event_contents = soup.find_all("div", class_="fc-content")
-
-            if not event_contents:
-                print("No class events found on the schedule page.")
-                return
-
-            for content in event_contents:
-                time_element = content.find("div", class_="fc-time")
-                title_element = content.find("div", class_="fc-title")
-
-                if time_element and title_element:
-                    time_str = time_element.text.strip()
-                    full_title = title_element.text.strip()
-                    notification_id = f"{datetime.now().strftime('%Y-%m-%d')}_{time_str}"
-
-                    if notification_id in sent_today:
-                        continue
-
-                    class_time = datetime.strptime(
-                        f"{datetime.now().strftime('%Y-%m-%d')} {time_str}", "%Y-%m-%d %H:%M"
-                    )
-                    time_now = datetime.now()
-                    minutes_until_class = (class_time - time_now).total_seconds() / 60
-
-                    if 10 <= minutes_until_class < 16:
-                        print(f"Sending notification for '{full_title}'")
-                        message = (
-                            f"🔔 *Class Reminder!* \n\nYour class **{full_title}** "
-                            f"is starting in about 15 minutes."
-                        )
-                        send_telegram_notification(message)
-
-                        sent_today.append(notification_id)
-                        save_sent_notifications(sent_today)
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        send_telegram_notification(
-            f"⚠️ **Scraper Error:**\nCould not fetch your daily schedule. Reason: {e}"
-        )
+        print("—" * 40)
 
 
 if __name__ == "__main__":
-    scrape_and_check_reminders()
+    try:
+        test_chat_id = 123456  # 👈 Replace with your chat_id for testing
+        data = fetch_lpu_classes(test_chat_id)
+        print_classes(data)
+    except Exception as e:
+        print("❌ Error:", e)
