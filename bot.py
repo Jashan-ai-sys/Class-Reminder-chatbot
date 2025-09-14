@@ -1537,14 +1537,11 @@ def main():
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
     # logger.info(f"Starting webhook on port {PORT}")
-   # NEW CODE
-    WEBHOOK_PATH = os.getenv("WEBHOOK_PATH")
-
     application.run_webhook(
     listen="0.0.0.0",
     port=PORT,
-    url_path=WEBHOOK_PATH,  # Use the new secret path
-    webhook_url=f"{APP_URL}/{WEBHOOK_PATH}" # Use it here too
+    url_path=BOT_TOKEN,
+    webhook_url=f"{APP_URL}/{BOT_TOKEN}"
     )
 
 
