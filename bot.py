@@ -1507,11 +1507,15 @@ async def handle_google_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 
 def main():
-    """Start the bot."""
+    """Starts the bot and registers all handlers."""
     if not BOT_TOKEN:
         logger.critical("BOT_TOKEN is not set. Please add your token to the script.")
         return
-    bot.application = application # Give bot instance access to application
+
+    # Give the global bot instance access to the application
+    bot.application = application
+    
+    # --- Register ALL your handlers here ---
     application.add_handler(setup_handler)
     application.add_handler(CommandHandler("editschedule", editschedule_command))
     application.add_handler(CommandHandler("generateschedule", generate_schedule_command))
@@ -1519,7 +1523,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'localhost:8080'), handle_google_callback))
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+    
     # Command Handlers
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
@@ -1534,21 +1538,26 @@ def main():
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("test", test_command))
     application.add_handler(CommandHandler("export", export_command))
+    
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
-    # logger.info(f"Starting webhook on port {PORT}")
+
+    # --- This is the corrected webhook setup ---
+    # It now uses your WEBHOOK_PATH environment variable
+    WEBHOOK_PATH = os.getenv("WEBHOOK_PATH")
+    if not WEBHOOK_PATH:
+        logger.critical("WEBHOOK_PATH environment variable not set!")
+        return
+
+    # This starts the server AFTER all handlers are registered
     application.run_webhook(
-    listen="0.0.0.0",
-    port=PORT,
-    url_path=BOT_TOKEN,
-    webhook_url=f"{APP_URL}/{BOT_TOKEN}"
+       listen="0.0.0.0",
+       port=PORT,
+       url_path=WEBHOOK_PATH,
+       webhook_url=f"{APP_URL}/{WEBHOOK_PATH}"
     )
 
-
-
-
-
 if __name__ == '__main__':
-    main()   # initialize handlers etc.
+    main()
     
     
