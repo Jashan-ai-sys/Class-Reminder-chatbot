@@ -3,3 +3,4 @@ uvicorn
 pymongo
 cryptography
 python-dotenv
+python-multipart
