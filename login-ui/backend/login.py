@@ -6,7 +6,7 @@ import os
 
 app = FastAPI()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://login-frontend-h8oi.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://login-frontend-h8oi-mea5018wf-jashan-ai-sys-projects.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,
