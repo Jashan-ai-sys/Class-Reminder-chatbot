@@ -2,13 +2,15 @@ from fastapi import FastAPI, Form
 from fastapi.middleware.cors import CORSMiddleware
 from db_helpers import save_user
 from crypto import encrypt_password
+import os
 
 app = FastAPI()
 
-# Allow frontend (React on Vercel) to call this API
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://login-frontend-h8oi.vercel.app/")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # TODO: replace with your Vercel URL later
+    allow_origins=[FRONTEND_URL],  # frontend domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
