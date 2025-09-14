@@ -1,7 +1,7 @@
 import os
 from cryptography.fernet import Fernet
 
-FERNET_KEY = os.getenv("FERNET_KEY")
+FERNET_KEY = os.environ["FERNET_KEY"]
 if not FERNET_KEY:
     raise RuntimeError("❌ Set FERNET_KEY env var (use Fernet.generate_key())")
 
