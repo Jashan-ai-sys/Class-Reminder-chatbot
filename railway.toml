@@ -1,0 +1,4 @@
+[nix]
+# Specifies the system packages to install.
+# We are asking for Python 3.11, Chromium (the browser), and chromedriver.
+pkgs = ["python311", "chromium", "chromedriver"]

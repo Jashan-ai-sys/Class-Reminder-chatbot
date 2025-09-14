@@ -25,7 +25,17 @@ def get_user_credentials(chat_id: int):
     username, password_enc, cookie, cookie_expiry = row
     password = decrypt_password(password_enc)
     return username, password, cookie, cookie_expiry
+def get_chrome_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
 
+    chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+    driver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+
+    service = Service(driver_path)
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 def login_and_get_cookie(chat_id: int):
     username, password, _, _ = get_user_credentials(chat_id)
@@ -36,7 +46,8 @@ def login_and_get_cookie(chat_id: int):
     chrome_options.add_argument("--disable-dev-shm-usage")
 
     service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = get_chrome_driver()
+
 
     try:
         driver.get("https://myclass.lpu.in")
@@ -54,9 +65,10 @@ def login_and_get_cookie(chat_id: int):
         cookies = driver.get_cookies()
         cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
 
-        # ✅ Save cookie in DB for reuse
-        save_cookie(chat_id, cookie_str)
+        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60)
 
+# ✅ Save cookie in DB for reuse with expiry
+        save_cookie(chat_id, cookie_str, expiry_timestamp)
         return cookie_str
 
     finally:

@@ -7,7 +7,7 @@ import re
 import io
 import pickle
 from datetime import datetime, timedelta
-from turtle import update
+from db_helpers import update_user   # or whatever function you defined
 from typing import Dict, List, Optional
 import base64
 from scraper import fetch_lpu_classes
@@ -1537,7 +1537,13 @@ def main():
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
     # logger.info(f"Starting webhook on port {PORT}")
-    application.run_polling()
+    application.run_webhook(
+    listen="0.0.0.0",
+    port=PORT,
+    url_path=BOT_TOKEN,
+    webhook_url=f"{APP_URL}/{BOT_TOKEN}"
+)
+
 
 
 
