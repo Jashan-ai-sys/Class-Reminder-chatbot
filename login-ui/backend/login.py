@@ -17,9 +17,14 @@ app.add_middleware(
 )
 
 @app.post("/login")
-async def login_submit(username: str = Form(...), password: str = Form(...)):
-    save_user(username, encrypt_password(password))
-    return {"status": "success", "message": "✅ Credentials saved"}
+async def login_submit(
+    username: str = Form(...),
+    password: str = Form(...),
+    chat_id: str = Form(...)
+):
+    enc_pass = encrypt_password(password)
+    save_user(chat_id, username, enc_pass)
+    return {"status": "success"}
 @app.get("/test")
 async def test():
     return {"status": "ok", "message": "🚀 Backend is running fine on Railway!"}
