@@ -1,1 +1,1 @@
-web: waitress-serve --host 0.0.0.0 --port $PORT login:app
+web: uvicorn login:app --host 0.0.0.0 --port $PORT

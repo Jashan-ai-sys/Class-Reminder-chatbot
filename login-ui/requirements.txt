@@ -3,5 +3,4 @@ uvicorn
 jinja2
 cryptography
 pymongo[srv]==4.6.3
-waitress==2.1.2
 
