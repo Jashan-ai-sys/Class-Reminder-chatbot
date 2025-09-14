@@ -16,9 +16,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/login/{chat_id}")
-async def login_submit(chat_id: str, username: str = Form(...), password: str = Form(...)):
-    save_user(chat_id, username, encrypt_password(password))
+@app.post("/login")
+async def login_submit(username: str = Form(...), password: str = Form(...)):
+    save_user(username, encrypt_password(password))
     return {"status": "success", "message": "✅ Credentials saved"}
 @app.get("/test")
 async def test():
