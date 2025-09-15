@@ -1544,7 +1544,7 @@ def main():
 
     # --- This is the corrected webhook setup ---
     # It now uses your WEBHOOK_PATH environment variable
-    WEBHOOK_PATH = os.getenv("WEBHOOK_PATH","/superSecretBotPath734hjw")
+    WEBHOOK_PATH = os.getenv("WEBHOOK_PATH","superSecretBotPath734hjw")
     if not WEBHOOK_PATH:
         logger.critical("WEBHOOK_PATH environment variable not set!")
         return
