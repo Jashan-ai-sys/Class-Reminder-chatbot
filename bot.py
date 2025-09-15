@@ -90,7 +90,8 @@ COURSE_INFO = {
 
 class LPUClassBot:
       # keep it empty so the AttributeError is gone
- 
+      # keep it empty so the AttributeError is gone
+
     def __init__(self):
         # self.classes = self.load_classes()
         self.application = None
@@ -139,36 +140,26 @@ class LPUClassBot:
             msg += f"🔗 [Join Class]({cls['joinUrl']})"
         return msg
 
-    async def schedule_reminders(self, chat_id: int):
+    async def schedule_reminders(chat_id: int):
         try:
-            data = fetch_lpu_classes(chat_id)  # ✅ Fetch with user’s chat_id
+            data = fetch_lpu_classes(chat_id)
             classes = data.get("ref", [])
-
             now = datetime.now()
+
             for cls in classes:
                 start = datetime.fromtimestamp(cls["startTime"] / 1000)
                 remind_time = start - timedelta(minutes=10)
 
                 if remind_time > now:
-                    msg = self.format_class(cls)
+                    msg = format_class(cls)
 
                     async def reminder(ctx: ContextTypes.DEFAULT_TYPE):
-                        await ctx.bot.send_message(
-                            chat_id,
-                            f"⏰ Reminder:\n{msg}",
-                            parse_mode="Markdown"
-                        )
+                        await ctx.bot.send_message(chat_id, f"⏰ Reminder:\n{msg}")
 
-                    # ✅ Schedule reminder
-                    self.application.job_queue.run_once(
-                        reminder,
-                        when=(remind_time - now).total_seconds()
-                    )
-
-            print(f"✅ Reminders scheduled for chat_id {chat_id}")
-
+                    application.job_queue.run_once(reminder, when=remind_time)
         except Exception as e:
             print("Error scheduling reminders:", e)
+
 
 
     def save_classes(self):

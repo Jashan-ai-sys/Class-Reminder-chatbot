@@ -25,7 +25,18 @@ async def login_submit(
 ):
     enc_pass = encrypt_password(password)
     save_user(chat_id, username, enc_pass)
+    # 🚀 Automatically trigger reminders after login
+    try:
+        # run reminder task in the telegram bot’s job queue
+        application.job_queue.run_once(
+            lambda ctx: application.create_task(schedule_reminders(int(chat_id))),
+            when=1  # start after 1 second
+        )
+    except Exception as e:
+        print(f"⚠️ Could not schedule reminders: {e}")
+        
     return {"status": "success"}
+
 @app.get("/test")
 async def test():
     return {"status": "ok", "message": "🚀 Backend is running fine on Railway!"}
