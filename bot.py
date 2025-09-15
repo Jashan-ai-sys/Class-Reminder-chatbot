@@ -1557,7 +1557,8 @@ def main():
        webhook_url=f"{APP_URL}/{WEBHOOK_PATH}"
     )
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    application.run_polling()
+
     
     
