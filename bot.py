@@ -165,7 +165,7 @@ async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     
 
-    async def schedule_reminders(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
+async def schedule_reminders(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         try:
             data = fetch_lpu_classes(chat_id)
             classes = data.get("ref") or data.get("data") or []
