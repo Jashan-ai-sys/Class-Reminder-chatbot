@@ -111,8 +111,43 @@ class LPUClassBot:
         reminder_bot = ReminderBot(application)
         await reminder_bot.schedule_reminders(chat_id)
 
+    async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_user.id
+        try:
+            data = fetch_lpu_classes(chat_id)  # use scraper.py
 
-    
+            classes = data.get("ref") or data.get("data") or data.get("classes", [])
+            if not classes:
+                await update.message.reply_text("🎉 No upcoming classes found.")
+                return
+
+            response_lines = []
+            for cls in classes:
+                title = cls.get("title", "Unknown Class").strip()
+
+                start_ts = cls.get("startTime")
+                end_ts = cls.get("endTime")
+
+                if start_ts and end_ts:
+                    start = datetime.fromtimestamp(start_ts / 1000)
+                    end = datetime.fromtimestamp(end_ts / 1000)
+                    status = cls.get("status", "unknown")
+
+                    response_lines.append(
+                        f"📚 {title}\n"
+                        f"🕘 {start.strftime('%A, %d %B %Y %I:%M %p')} – {end.strftime('%I:%M %p')}\n"
+                        f"📌 Status: {status}\n"
+                        f"—" * 40
+                    )
+
+            # Send final formatted message
+            if response_lines:
+                await update.message.reply_text("\n".join(response_lines))
+            else:
+                await update.message.reply_text("🎉 No upcoming classes found.")
+
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error fetching classes: {e}")
 
     def load_classes(self) -> Dict:
         """Load classes from JSON file with error handling"""
@@ -1490,7 +1525,7 @@ def main():
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("test", test_command))
     application.add_handler(CommandHandler("export", export_command))
-    
+    application.add_handler(CommandHandler("myschedule", myschedule_command))
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
 
