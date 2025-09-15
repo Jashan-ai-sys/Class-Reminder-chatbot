@@ -16,6 +16,7 @@ from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 from crypto import encrypt_password
 from db_helpers import save_user
+from telegram.ext import JobQueue
 
 init_db()
 
@@ -126,63 +127,61 @@ class LPUClassBot:
         except (json.JSONDecodeError, FileNotFoundError) as e:
             logger.error(f"Error loading classes: {e}")
             return {}
-    @staticmethod
-    def format_class(self, cls):
+    
+    def format_class(cls):
+        title = cls.get("title", "Unknown Class").strip()
         start = datetime.fromtimestamp(cls["startTime"] / 1000)
         end = datetime.fromtimestamp(cls["endTime"] / 1000)
-        title = cls.get("title", "Unknown Class").strip()
+        join = cls.get("joinUrl", "")
+        return f"📚 {title}\n🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n🔗 {join if join else 'No link'}"
 
-        msg = (
-            f"📚 *{title}*\n"
-            f"🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n"
-        )
-        if cls.get("joinUrl"):
-            msg += f"🔗 [Join Class]({cls['joinUrl']})"
-        return msg
+    
 
-    async def schedule_reminders(chat_id: int):
-        try:
-            data = fetch_lpu_classes(chat_id)
-            classes = data.get("ref", [])
-            now = datetime.now()
+async def schedule_reminders(application: Application, chat_id: int):
+    try:
+        data = fetch_lpu_classes(chat_id)
+        classes = data.get("ref") or data.get("data") or []
 
-            for cls in classes:
-                start = datetime.fromtimestamp(cls["startTime"] / 1000)
-                remind_time = start - timedelta(minutes=10)
+        for cls in classes:
+            title = cls.get("title", "Class").strip()
+            start_time = datetime.fromtimestamp(cls["startTime"] / 1000)
 
-                if remind_time > now:
-                    msg = format_class(cls)
+            reminder_time = start_time - timedelta(minutes=10)
+            if reminder_time > datetime.now():
+                application.job_queue.run_once(
+                    lambda ctx: ctx.bot.send_message(chat_id, f"⏰ Reminder: {title} in 10 mins"),
+                    when=reminder_time,
+                    chat_id=chat_id,
+                )
+        print(f"✅ Reminders scheduled for {chat_id}")
+    except Exception as e:
+        print(f"⚠️ Could not schedule reminders: {e}")
 
-                    async def reminder(ctx: ContextTypes.DEFAULT_TYPE):
-                        await ctx.bot.send_message(chat_id, f"⏰ Reminder:\n{msg}")
 
-                    application.job_queue.run_once(reminder, when=remind_time)
-        except Exception as e:
-            print("Error scheduling reminders:", e)
 
 
 
     def save_classes(self):
-        """Save classes to JSON file with backup"""
-        try:
-            backup_file = f"{CLASSES_FILE}.backup"
-            if os.path.exists(CLASSES_FILE):
-                os.rename(CLASSES_FILE, backup_file)
-            
-            with open(CLASSES_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self.classes, f, indent=2, ensure_ascii=False)
-            
-            if os.path.exists(backup_file):
-                os.remove(backup_file)
+            """Save classes to JSON file with backup"""
+            try:
+                backup_file = f"{CLASSES_FILE}.backup"
+                if os.path.exists(CLASSES_FILE):
+                    os.rename(CLASSES_FILE, backup_file)
                 
-        except Exception as e:
-            logger.error(f"Error saving classes: {e}")
-            backup_file = f"{CLASSES_FILE}.backup"
-            if os.path.exists(backup_file) and not os.path.exists(CLASSES_FILE):
-                try:
-                    os.rename(backup_file, CLASSES_FILE)
-                except Exception as restore_error:
-                    logger.error(f"Error restoring backup: {restore_error}")
+                with open(CLASSES_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(self.classes, f, indent=2, ensure_ascii=False)
+                
+                if os.path.exists(backup_file):
+                    os.remove(backup_file)
+                    
+            except Exception as e:
+                logger.error(f"Error saving classes: {e}")
+                backup_file = f"{CLASSES_FILE}.backup"
+                if os.path.exists(backup_file) and not os.path.exists(CLASSES_FILE):
+                    try:
+                        os.rename(backup_file, CLASSES_FILE)
+                    except Exception as restore_error:
+                        logger.error(f"Error restoring backup: {restore_error}")
 
     def parse_class_input(self, input_text: str) -> Optional[Dict]:
         """Parse class input with improved validation"""
@@ -754,97 +753,59 @@ async def list_classes_command(update: Update, context: ContextTypes.DEFAULT_TYP
 # ==================== NEWLY ADDED/COMPLETED FUNCTIONS ====================
 
 async def next_class_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows the very next upcoming class."""
-    upcoming = bot.get_upcoming_classes(update.effective_user.id, limit=1)
-    
-    if not upcoming:
-        await update.message.reply_text(
-            "🎉 No upcoming classes! Use `/addtimetable week` to add your schedule.",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-        
-    next_cls = upcoming[0]
-    class_time = datetime.fromisoformat(next_cls["time"])
-    course_info = bot.get_course_info(next_cls["name"])
-    
-    time_diff = class_time - datetime.now()
-    days = time_diff.days
-    hours, remainder = divmod(time_diff.seconds, 3600)
-    minutes, _ = divmod(remainder, 60)
-    
-    time_until = ""
-    if days > 0:
-        time_until += f"{days} day(s), "
-    if hours > 0:
-        time_until += f"{hours} hour(s), "
-    time_until += f"{minutes} minute(s)"
-    
-    message = f"""
-    ⏰ *Your Next Class Is:*
+    chat_id = update.effective_user.id
+    try:
+        data = fetch_lpu_classes(chat_id)
+        classes = data.get("ref") or data.get("data") or []
 
-    📚 **{next_cls['name']}**
-    📖 {course_info['name']}
-    👨‍🏫 {course_info['faculty']}
-    📅 {class_time.strftime('%A, %B %d')}
-    ⏰ {class_time.strftime('%I:%M %p')}
-    ⏱️ In: *{time_until}*
-    
-    {f"🔗 [Join Class]({next_cls['url']})" if next_cls.get('url') else ""}
-    {f"📝 {next_cls['notes']}" if next_cls.get('notes') else ""}
-    """
-    
-    keyboard = [
-        [
-            InlineKeyboardButton("📋 View All", callback_data="list_classes"),
-            InlineKeyboardButton("📊 Today's Classes", callback_data="today_classes")
-        ]
-    ]
-    if next_cls.get('url'):
-        keyboard.insert(0, [InlineKeyboardButton("🔗 Join Now", url=next_cls['url'])])
-    
-    await update.message.reply_text(
-        message,
-        parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=True,
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+        if not classes:
+            await update.message.reply_text("🎉 No upcoming classes found.")
+            return
+
+        next_class = classes[0]
+        title = next_class.get("title", "Unknown Class").strip()
+        start = datetime.fromtimestamp(next_class["startTime"] / 1000)
+        end = datetime.fromtimestamp(next_class["endTime"] / 1000)
+
+        msg = (
+            f"📚 *{title}*\n"
+            f"🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n"
+        )
+        if next_class.get("joinUrl"):
+            msg += f"🔗 [Join Class]({next_class['joinUrl']})"
+
+        await update.message.reply_text(msg, parse_mode="Markdown")
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error fetching next class: {e}")
+
 
 async def today_classes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows all classes scheduled for today."""
-    user_classes = bot.get_user_classes(update.effective_user.id)
-    today = datetime.now().date()
-    
-    todays_classes = [
-        cls for cls in user_classes 
-        if datetime.fromisoformat(cls["time"]).date() == today
-    ]
-    
-    if not todays_classes:
-        await update.message.reply_text(
-            f"🌞 No classes scheduled for today, {today.strftime('%A, %B %d')}. Enjoy your day!",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-    
-    message = f"📊 *Today's Schedule ({today.strftime('%A, %B %d')})*\n\n"
-    for cls in sorted(todays_classes, key=lambda x: x['time']):
-        class_time = datetime.fromisoformat(cls["time"])
-        course_info = bot.get_course_info(cls["name"])
-        status = "✅ Done" if class_time < datetime.now() else "Upcoming"
-        
-        message += f"""
-        - *{class_time.strftime('%I:%M %p')}* - **{cls['name']}**
-          `{course_info['name']}`
-          Status: {status}
-          {f"  🔗 [Link]({cls['url']})" if cls.get('url') else ""}
-        """
-    
-    await update.message.reply_text(
-        message,
-        parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=True
-    )
+    chat_id = update.effective_user.id
+    try:
+        data = fetch_lpu_classes(chat_id)  # Fetch classes from scraper
+        classes = data.get("ref") or data.get("data") or []
+
+        if not classes:
+            await update.message.reply_text("🎉 No classes today.")
+            return
+
+        msg_lines = []
+        for cls in classes:
+            title = cls.get("title", "Unknown Class").strip()
+            start = datetime.fromtimestamp(cls["startTime"] / 1000)
+            end = datetime.fromtimestamp(cls["endTime"] / 1000)
+
+            msg_lines.append(
+                f"📚 *{title}*\n🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}"
+            )
+
+        await update.message.reply_text("\n\n".join(msg_lines), parse_mode="Markdown")
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error fetching classes: {e}")
+
+
 
 async def week_classes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows all classes for the current week."""

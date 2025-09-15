@@ -18,6 +18,10 @@ load_dotenv()
 
 URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 
+
+# ---------------------------
+# Helpers
+# ---------------------------
 def get_user_credentials(chat_id: int):
     row = get_user(chat_id)
     if not row:
@@ -25,29 +29,25 @@ def get_user_credentials(chat_id: int):
     username, password_enc, cookie, cookie_expiry = row
     password = decrypt_password(password_enc)
     return username, password, cookie, cookie_expiry
+
+
 def get_chrome_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium")
-    driver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
-
+    driver_path = os.getenv("CHROMEDRIVER_PATH", ChromeDriverManager().install())
     service = Service(driver_path)
     return webdriver.Chrome(service=service, options=chrome_options)
 
+
+# ---------------------------
+# Cookie Login
+# ---------------------------
 def login_and_get_cookie(chat_id: int):
     username, password, _, _ = get_user_credentials(chat_id)
-
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-
-    service = Service(ChromeDriverManager().install())
     driver = get_chrome_driver()
-
 
     try:
         driver.get("https://myclass.lpu.in")
@@ -65,26 +65,31 @@ def login_and_get_cookie(chat_id: int):
         cookies = driver.get_cookies()
         cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
 
+        # Save with expiry (7 days)
         expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60)
-
-# ✅ Save cookie in DB for reuse with expiry
         save_cookie(chat_id, cookie_str, expiry_timestamp)
-        return cookie_str
 
+        return cookie_str
     finally:
         driver.quit()
 
 
+# ---------------------------
+# Fetch Classes
+# ---------------------------
 def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
     username, password, cookie, cookie_expiry = get_user_credentials(chat_id)
+
+    # Check expiry
+    now = int(time.time())
+    if not cookie or not cookie_expiry or now > cookie_expiry:
+        print("⚠️ Cookie expired or missing → Logging in again...")
+        cookie = login_and_get_cookie(chat_id)
 
     if min_ts is None:
         min_ts = int(time.time() * 1000)
     if max_ts is None:
         max_ts = min_ts + 24 * 60 * 60 * 1000
-
-    if not cookie:
-        cookie = login_and_get_cookie(chat_id)
 
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -107,8 +112,10 @@ def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
     return r.json()
 
 
+# ---------------------------
+# Debug Utility
+# ---------------------------
 def print_classes(data):
-    """Pretty print Codetantra classes from API response."""
     classes = data.get("ref") or data.get("data") or []
     if not classes:
         print("🎉 No upcoming classes found.")
@@ -126,13 +133,12 @@ def print_classes(data):
 
         if cls.get("joinUrl"):
             print(f"🔗 Join: {cls['joinUrl']}")
-
         print("—" * 40)
 
 
 if __name__ == "__main__":
     try:
-        test_chat_id = 123456  # 👈 Replace with your chat_id for testing
+        test_chat_id = 123456  # Replace with real chat_id for testing
         data = fetch_lpu_classes(test_chat_id)
         print_classes(data)
     except Exception as e:
