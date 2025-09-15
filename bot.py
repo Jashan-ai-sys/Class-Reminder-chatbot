@@ -162,13 +162,10 @@ async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         end = datetime.fromtimestamp(cls["endTime"] / 1000)
         join = cls.get("joinUrl", "")
         return f"📚 {title}\n🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n🔗 {join if join else 'No link'}"
-
-    
-
-async def schedule_reminders(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
+    async def schedule_reminders(application, chat_id: int):
         try:
             data = fetch_lpu_classes(chat_id)
-            classes = data.get("ref") or data.get("data") or []
+            classes = data.get("ref") or data.get("data") or data.get("classes", [])
 
             for cls in classes:
                 title = cls.get("title", "Class").strip()
@@ -176,7 +173,7 @@ async def schedule_reminders(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
 
                 reminder_time = start_time - timedelta(minutes=10)
                 if reminder_time > datetime.now():
-                    context.application.job_queue.run_once(
+                    application.job_queue.run_once(
                         lambda ctx: ctx.bot.send_message(
                             chat_id, f"⏰ Reminder: {title} in 10 mins"
                         ),
@@ -186,6 +183,10 @@ async def schedule_reminders(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
             print(f"✅ Reminders scheduled for {chat_id}")
         except Exception as e:
             print(f"⚠️ Could not schedule reminders: {e}")
+
+    
+
+
 
 
 
