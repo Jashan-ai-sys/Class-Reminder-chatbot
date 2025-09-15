@@ -89,7 +89,7 @@ COURSE_INFO = {
 }
 
 class LPUClassBot:
-    self.classes = {}  # keep it empty so the AttributeError is gone
+      # keep it empty so the AttributeError is gone
  
     def __init__(self):
         # self.classes = self.load_classes()
