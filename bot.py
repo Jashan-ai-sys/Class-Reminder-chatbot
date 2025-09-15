@@ -1527,7 +1527,7 @@ def main():
     application.add_handler(CommandHandler("status", status_command))
     application.add_handler(CommandHandler("test", test_command))
     application.add_handler(CommandHandler("export", export_command))
-    application.add_handler(CommandHandler("myschedule", myschedule_command))
+    application.add_handler(CommandHandler("myschedule",bot.myschedule_command))
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
 
