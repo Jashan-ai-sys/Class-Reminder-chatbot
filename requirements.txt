@@ -30,3 +30,4 @@ pymongo
 # For Jupyter/IPython notebook compatibility (optional)
 nest_asyncio
 python-multipart
+fastapi
