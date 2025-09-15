@@ -89,6 +89,8 @@ COURSE_INFO = {
 }
 
 class LPUClassBot:
+    self.classes = {}  # keep it empty so the AttributeError is gone
+ 
     def __init__(self):
         # self.classes = self.load_classes()
         self.application = None
@@ -262,10 +264,16 @@ class LPUClassBot:
         self.save_classes()
         return new_id
 
-    def get_user_classes(self, user_id: int) -> List:
-        """Get all classes for a user, sorted by time"""
-        user_classes = self.classes.get(str(user_id), [])
-        return sorted(user_classes, key=lambda x: x.get('time', ''))
+    
+
+    def get_user_classes(self, user_id: int):
+        try:
+            data = fetch_lpu_classes(user_id)
+            return data.get("ref", []) or data.get("data", [])
+        except Exception as e:
+            print(f"❌ Error fetching classes for {user_id}: {e}")
+            return []
+
 
     def remove_class(self, user_id: int, class_id: int) -> bool:
         """Remove a class by ID"""
@@ -286,21 +294,13 @@ class LPUClassBot:
             self.classes[user_key] = []
             self.save_classes()
 
-    def get_upcoming_classes(self, user_id: int, limit: int = 5) -> List:
-        """Get upcoming classes for a user"""
-        user_classes = self.get_user_classes(user_id)
-        now = datetime.now()
-        upcoming = []
-        
-        for cls in user_classes:
-            try:
-                class_time = datetime.fromisoformat(cls["time"])
-                if class_time > now:
-                    upcoming.append(cls)
-            except (ValueError, KeyError):
-                continue
-        
-        return sorted(upcoming, key=lambda x: x["time"])[:limit]
+    def get_upcoming_classes(self, user_id: int, limit=1):
+        classes = self.get_user_classes(user_id)
+        if not classes:
+            return []
+        classes_sorted = sorted(classes, key=lambda x: x["startTime"])
+        return classes_sorted[:limit]
+
 
     def get_course_info(self, class_name: str) -> Dict:
         """Get course information based on class name"""
