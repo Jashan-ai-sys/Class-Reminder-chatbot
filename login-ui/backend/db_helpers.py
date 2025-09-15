@@ -1,23 +1,28 @@
-import os
 from pymongo import MongoClient
+import os
 
-MONGO_URL = os.getenv("MONGO_URL")  # Railway env var
-client = MongoClient(MONGO_URL)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+client = MongoClient(MONGO_URI)
+db = client["lpu_bot"]
+users_col = db["users"]
 
-db = client["lpu_bot"]   # Database
-users_col = db["users"]  # Collection for users
-reminders_col = db["reminders"]  # Collection for reminders
-
-def save_user(username, password_enc):
+# Save only username + encrypted password
+def save_user(username: str, password_enc: str):
     users_col.update_one(
-        {"username": username},   # use username as unique key
+        {"username": username},
         {"$set": {"username": username, "password": password_enc}},
-        upsert=True
+        upsert=True,
     )
 
+# Link Telegram chat_id later
+def link_chat_id(username: str, chat_id: int):
+    users_col.update_one(
+        {"username": username},
+        {"$set": {"chat_id": chat_id}},
+    )
 
-def get_user(chat_id: str):
+def get_user_by_username(username: str):
+    return users_col.find_one({"username": username})
+
+def get_user_by_chat_id(chat_id: int):
     return users_col.find_one({"chat_id": chat_id})
-
-def delete_user(chat_id: str):
-    users_col.delete_one({"chat_id": chat_id})
