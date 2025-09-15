@@ -18,19 +18,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ------------------------
+# Environment
+# ------------------------
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/superSecretBotPath734hjw")
+APP_URL = os.getenv("APP_URL")  # Railway public URL, e.g. https://myapp.up.railway.app
+
+# ------------------------
 # FastAPI app
 # ------------------------
 app = FastAPI()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/superSecretBotPath734hjw")
-APP_URL = os.getenv("APP_URL")  # Railway public URL
-
 # CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=[FRONTEND_URL],   # only your frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +45,9 @@ app.add_middleware(
 application = Application.builder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Hello! Use /login to link your account.")
+    await update.message.reply_text(
+        "👋 Hello! Use /login to link your account via the website."
+    )
 
 application.add_handler(CommandHandler("start", start))
 
@@ -53,8 +58,9 @@ application.add_handler(CommandHandler("start", start))
 async def login_submit(
     username: str = Form(...),
     password: str = Form(...),
-    chat_id: str = Form(...)
+    chat_id: str = Form(...),
 ):
+    """Save user credentials into DB"""
     enc_pass = encrypt_password(password)
     save_user(chat_id, username, enc_pass)
     return {"status": "success"}
@@ -63,7 +69,9 @@ async def login_submit(
 async def test():
     return {"status": "ok", "message": "🚀 Backend + Bot are running on Railway!"}
 
+# ------------------------
 # Telegram Webhook endpoint
+# ------------------------
 @app.post(WEBHOOK_PATH)
 async def telegram_webhook(request: Request):
     data = await request.json()
@@ -72,10 +80,18 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 # ------------------------
-# Startup
+# Startup (set webhook)
 # ------------------------
 @app.on_event("startup")
 async def on_startup():
     webhook_url = f"{APP_URL}{WEBHOOK_PATH}"
-    logger.info(f"🌍 Setting webhook: {webhook_url}")
+    logger.info(f"🌍 Setting Telegram webhook: {webhook_url}")
     await application.bot.set_webhook(webhook_url)
+
+# ------------------------
+# Shutdown (cleanup)
+# ------------------------
+@app.on_event("shutdown")
+async def on_shutdown():
+    logger.info("🛑 Shutting down bot...")
+    await application.shutdown()
