@@ -114,7 +114,7 @@ class LPUClassBot:
     async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id
         try:
-            data = fetch_lpu_classes(chat_id)  # use scraper.py
+            data = fetch_lpu_classes(chat_id)  # call scraper.py
 
             classes = data.get("ref") or data.get("data") or data.get("classes", [])
             if not classes:
@@ -140,7 +140,6 @@ class LPUClassBot:
                         f"—" * 40
                     )
 
-            # Send final formatted message
             if response_lines:
                 await update.message.reply_text("\n".join(response_lines))
             else:
