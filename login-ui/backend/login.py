@@ -6,7 +6,7 @@ import os
 
 app = FastAPI()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://login-frontend-h8oi-mea5018wf-jashan-ai-sys-projects.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,14 +16,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/login")
+@app.post("/login/{chat_id}")
 async def login_submit(
+    chat_id: str,
     username: str = Form(...),
     password: str = Form(...),
    
 ):
     enc_pass = encrypt_password(password)
-    save_user(username, enc_pass)
+    save_user(chat_id, username, enc_pass)
     return {"status": "success"}
 @app.get("/test")
 async def test():
