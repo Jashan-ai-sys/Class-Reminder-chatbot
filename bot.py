@@ -115,7 +115,6 @@ class LPUClassBot:
         chat_id = update.effective_user.id
         try:
             data = fetch_lpu_classes(chat_id)  # call scraper.py
-
             classes = data.get("ref") or data.get("data") or data.get("classes", [])
             if not classes:
                 await update.message.reply_text("🎉 No upcoming classes found.")
@@ -124,7 +123,6 @@ class LPUClassBot:
             response_lines = []
             for cls in classes:
                 title = cls.get("title", "Unknown Class").strip()
-
                 start_ts = cls.get("startTime")
                 end_ts = cls.get("endTime")
 
@@ -142,11 +140,13 @@ class LPUClassBot:
 
             if response_lines:
                 await update.message.reply_text("\n".join(response_lines))
-            else:
-                await update.message.reply_text("🎉 No upcoming classes found.")
+
+            # 🔔 Schedule reminders after showing schedule
+            await schedule_reminders(chat_id, context)
 
         except Exception as e:
             await update.message.reply_text(f"❌ Error fetching classes: {e}")
+
 
     def load_classes(self) -> Dict:
         """Load classes from JSON file with error handling"""
@@ -171,7 +171,7 @@ class LPUClassBot:
 
     
 
-    async def schedule_reminders(self, chat_id: int):
+    async def schedule_reminders(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
         try:
             data = fetch_lpu_classes(chat_id)
             classes = data.get("ref") or data.get("data") or []
@@ -182,14 +182,17 @@ class LPUClassBot:
 
                 reminder_time = start_time - timedelta(minutes=10)
                 if reminder_time > datetime.now():
-                    self.application.job_queue.run_once(
-                        lambda ctx: ctx.bot.send_message(chat_id, f"⏰ Reminder: {title} in 10 mins"),
+                    context.application.job_queue.run_once(
+                        lambda ctx: ctx.bot.send_message(
+                            chat_id, f"⏰ Reminder: {title} in 10 mins"
+                        ),
                         when=reminder_time,
                         chat_id=chat_id,
                     )
             print(f"✅ Reminders scheduled for {chat_id}")
         except Exception as e:
             print(f"⚠️ Could not schedule reminders: {e}")
+
 
 
 
