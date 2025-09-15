@@ -137,25 +137,25 @@ class LPUClassBot:
 
     
 
-async def schedule_reminders(application: Application, chat_id: int):
-    try:
-        data = fetch_lpu_classes(chat_id)
-        classes = data.get("ref") or data.get("data") or []
+    async def schedule_reminders(self, chat_id: int):
+        try:
+            data = fetch_lpu_classes(chat_id)
+            classes = data.get("ref") or data.get("data") or []
 
-        for cls in classes:
-            title = cls.get("title", "Class").strip()
-            start_time = datetime.fromtimestamp(cls["startTime"] / 1000)
+            for cls in classes:
+                title = cls.get("title", "Class").strip()
+                start_time = datetime.fromtimestamp(cls["startTime"] / 1000)
 
-            reminder_time = start_time - timedelta(minutes=10)
-            if reminder_time > datetime.now():
-                application.job_queue.run_once(
-                    lambda ctx: ctx.bot.send_message(chat_id, f"⏰ Reminder: {title} in 10 mins"),
-                    when=reminder_time,
-                    chat_id=chat_id,
-                )
-        print(f"✅ Reminders scheduled for {chat_id}")
-    except Exception as e:
-        print(f"⚠️ Could not schedule reminders: {e}")
+                reminder_time = start_time - timedelta(minutes=10)
+                if reminder_time > datetime.now():
+                    self.application.job_queue.run_once(
+                        lambda ctx: ctx.bot.send_message(chat_id, f"⏰ Reminder: {title} in 10 mins"),
+                        when=reminder_time,
+                        chat_id=chat_id,
+                    )
+            print(f"✅ Reminders scheduled for {chat_id}")
+        except Exception as e:
+            print(f"⚠️ Could not schedule reminders: {e}")
 
 
 
