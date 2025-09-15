@@ -111,41 +111,35 @@ class LPUClassBot:
         reminder_bot = ReminderBot(application)
         await reminder_bot.schedule_reminders(chat_id)
 
-    async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        chat_id = update.effective_user.id
-        try:
-            data = fetch_lpu_classes(chat_id)  # call scraper.py
-            classes = data.get("ref") or data.get("data") or data.get("classes", [])
-            if not classes:
-                await update.message.reply_text("🎉 No upcoming classes found.")
-                return
+async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_user.id
+    try:
+        data = fetch_lpu_classes(chat_id)
 
-            response_lines = []
-            for cls in classes:
-                title = cls.get("title", "Unknown Class").strip()
-                start_ts = cls.get("startTime")
-                end_ts = cls.get("endTime")
+        classes = data.get("ref") or data.get("data") or data.get("classes", [])
+        if not classes:
+            await update.message.reply_text("🎉 No upcoming classes found.")
+            return
 
-                if start_ts and end_ts:
-                    start = datetime.fromtimestamp(start_ts / 1000)
-                    end = datetime.fromtimestamp(end_ts / 1000)
-                    status = cls.get("status", "unknown")
+        response_lines = []
+        for cls in classes:
+            title = cls.get("title", "Unknown Class").strip()
+            start = datetime.fromtimestamp(cls["startTime"] / 1000)
+            end = datetime.fromtimestamp(cls["endTime"] / 1000)
+            status = cls.get("status", "unknown")
 
-                    response_lines.append(
-                        f"📚 {title}\n"
-                        f"🕘 {start.strftime('%A, %d %B %Y %I:%M %p')} – {end.strftime('%I:%M %p')}\n"
-                        f"📌 Status: {status}\n"
-                        f"—" * 40
-                    )
+            response_lines.append(
+                f"📚 {title}\n"
+                f"🕘 {start.strftime('%A, %d %B %Y %I:%M %p')} – {end.strftime('%I:%M %p')}\n"
+                f"📌 Status: {status}\n"
+                f"—" * 40
+            )
 
-            if response_lines:
-                await update.message.reply_text("\n".join(response_lines))
+        await update.message.reply_text("\n".join(response_lines))
 
-            # 🔔 Schedule reminders after showing schedule
-            await schedule_reminders(chat_id, context)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error fetching classes: {e}")
 
-        except Exception as e:
-            await update.message.reply_text(f"❌ Error fetching classes: {e}")
 
 
     def load_classes(self) -> Dict:
