@@ -14,6 +14,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+import os
+import shutil
+
+print("🔍 Debugging Chrome paths...")
+for bin_name in ["chromium", "chromium-browser", "google-chrome", "google-chrome-stable"]:
+    path = shutil.which(bin_name)
+    print(f"{bin_name}: {path}")
+
+chromedriver_path = shutil.which("chromedriver")
+print(f"chromedriver: {chromedriver_path}")
 
 load_dotenv()
 
@@ -52,9 +62,10 @@ def get_chrome_driver():
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--remote-debugging-port=9222")
 
-    # Use system-installed Chromium + chromedriver
-    chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+    # System-installed Chromium + Chromedriver
+    chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium-browser")
     driver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
 
     chrome_options.binary_location = chrome_path
