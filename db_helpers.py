@@ -45,3 +45,10 @@ def save_cookie(chat_id, cookie, expiry_timestamp):
         {"$set": {"cookie": cookie, "cookie_expiry": expiry_timestamp}},
         upsert=True
     )
+def init_db():
+    """Initialize MongoDB collections and indexes if needed."""
+    # ensure chat_id is indexed/unique
+    try:
+        users_col.create_index("chat_id", unique=True)
+    except Exception as e:
+        print(f"[WARN] Could not create index on chat_id: {e}")
