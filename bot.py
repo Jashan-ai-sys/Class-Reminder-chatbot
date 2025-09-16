@@ -318,7 +318,40 @@ class LPUClassBot:
             if code in class_name.upper():
                 return info
         return {"name": class_name, "faculty": "TBD", "room": "TBD"}
+    async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handles the /start command, routing new users to login and welcoming back existing ones."""
+        user = update.effective_user
+        chat_id = user.id
+        
+        # Check for deep linking parameter (e.g., from a successful login redirect)
+        if context.args and context.args[0] == 'success':
+            await update.message.reply_text("✅ Welcome! You are now logged in. I will start scheduling your class reminders.")
+            # This is the key step after a successful login
+            await bot.schedule_reminders(chat_id)
+            return
 
+        # Check if the user is already in our database
+        db_user = get_user(chat_id)
+
+        if db_user:
+            # User is already registered, welcome them back
+            await update.message.reply_text(f"Welcome back, {user.first_name}! I'm already set up to send you reminders. 🚀")
+            await bot.schedule_reminders(chat_id)
+        else:
+            # New user, prompt them to log in
+            frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
+            login_url = f"{frontend_url}?chat_id={chat_id}"
+
+            keyboard = [[
+                InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)
+            ]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await update.message.reply_text(
+                f"👋 Welcome, {user.first_name}!\n\n"
+                "To get started, please log in with your LPU credentials so I can fetch your class schedule.",
+                reply_markup=reply_markup
+            )
     def cleanup_old_classes(self, days_old: int = 7):
         """Remove classes older than specified days"""
         cutoff_date = datetime.now() - timedelta(days=days_old)
@@ -385,40 +418,6 @@ bot = LPUClassBot()
 # Make sure to import your new helper function
 from db_helpers import get_user, save_user # Assuming you have these
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /start command, routing new users to login and welcoming back existing ones."""
-    user = update.effective_user
-    chat_id = user.id
-    
-    # Check for deep linking parameter (e.g., from a successful login redirect)
-    if context.args and context.args[0] == 'success':
-        await update.message.reply_text("✅ Welcome! You are now logged in. I will start scheduling your class reminders.")
-        # This is the key step after a successful login
-        await bot.schedule_reminders(chat_id)
-        return
-
-    # Check if the user is already in our database
-    db_user = get_user(chat_id)
-
-    if db_user:
-        # User is already registered, welcome them back
-        await update.message.reply_text(f"Welcome back, {user.first_name}! I'm already set up to send you reminders. 🚀")
-        await bot.schedule_reminders(chat_id)
-    else:
-        # New user, prompt them to log in
-        frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
-        login_url = f"{frontend_url}?chat_id={chat_id}"
-
-        keyboard = [[
-            InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)
-        ]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(
-            f"👋 Welcome, {user.first_name}!\n\n"
-            "To get started, please log in with your LPU credentials so I can fetch your class schedule.",
-            reply_markup=reply_markup
-        )
 
 
 async def addtimetable_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1498,18 +1497,18 @@ def main():
     
     # Command Handlers
     application.add_handler(CommandHandler("start", bot.start_command))
-    application.add_handler(CommandHandler("help", bot.help_command))
-    application.add_handler(CommandHandler("add", bot.add_class_command))
-    application.add_handler(CommandHandler("list", bot.list_classes_command))
-    application.add_handler(CommandHandler("remove", bot.remove_class_command))
-    application.add_handler(CommandHandler("addtimetable", bot.addtimetable_command))
-    application.add_handler(CommandHandler("next", bot.next_class_command))
-    application.add_handler(CommandHandler("today", bot.today_classes_command))
-    application.add_handler(CommandHandler("week", bot.week_classes_command))
-    application.add_handler(CommandHandler("clear", bot.clear_classes_command))
-    application.add_handler(CommandHandler("status", bot.status_command))
-    application.add_handler(CommandHandler("test", bot.test_command))
-    application.add_handler(CommandHandler("export", bot.export_command))
+    application.add_handler(CommandHandler("help",help_command))
+    application.add_handler(CommandHandler("add", add_class_command))
+    application.add_handler(CommandHandler("list", list_classes_command))
+    application.add_handler(CommandHandler("remove", remove_class_command))
+    application.add_handler(CommandHandler("addtimetable", addtimetable_command))
+    application.add_handler(CommandHandler("next", next_class_command))
+    application.add_handler(CommandHandler("today", today_classes_command))
+    application.add_handler(CommandHandler("week", week_classes_command))
+    application.add_handler(CommandHandler("clear", clear_classes_command))
+    application.add_handler(CommandHandler("status", status_command))
+    application.add_handler(CommandHandler("test", test_command))
+    application.add_handler(CommandHandler("export", export_command))
     application.add_handler(CommandHandler("myschedule", bot.myschedule_command))
 
 
