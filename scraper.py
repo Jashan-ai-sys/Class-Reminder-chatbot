@@ -23,17 +23,23 @@ URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 # ------------------------
 # Get credentials from DB
 # ------------------------
-def get_user_credentials(chat_id: string):
+def get_user_credentials(chat_id: str):
     """
     Returns (username, decrypted_password, cookie, cookie_expiry) for a user.
+    For now, cookie + expiry are None because we don't store them in DB.
     """
     row = get_user(chat_id)
     if not row:
         raise RuntimeError("❌ No credentials found. Please login first.")
 
-    username, password_enc, cookie, cookie_expiry = row
+    username = row.get("username")
+    password_enc = row.get("password")
+    if not username or not password_enc:
+        raise RuntimeError("❌ Missing username/password for this user.")
+
     password = decrypt_password(password_enc)
-    return username, password, cookie, cookie_expiry
+    return username, password, None, None   # 👈 return cookie=None, expiry=None
+
 
 
 # ------------------------
