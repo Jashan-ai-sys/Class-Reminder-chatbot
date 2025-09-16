@@ -318,7 +318,7 @@ class LPUClassBot:
             if code in class_name.upper():
                 return info
         return {"name": class_name, "faculty": "TBD", "room": "TBD"}
-    async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def start_command(self,update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handles the /start command, routing new users to login and welcoming back existing ones."""
         user = update.effective_user
         chat_id = user.id
