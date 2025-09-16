@@ -7,7 +7,7 @@ import re
 import io
 import pickle
 from datetime import datetime, timedelta
-from db_helpers import update_user   # or whatever function you defined
+   # or whatever function you defined
 from typing import Dict, List, Optional
 import base64
 from scraper import fetch_lpu_classes
