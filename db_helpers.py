@@ -23,10 +23,25 @@ def link_chat_id(username: str, chat_id: int):
 
 def get_user(chat_id):
     user = users_col.find_one({"chat_id": str(chat_id)})
-    print(f"[DEBUG] get_user({chat_id}) -> {user}")  # keep debug
-    return user
+    if not user:
+        return None
+    return {
+        "chat_id": user.get("chat_id"),
+        "username": user.get("username"),
+        "password": user.get("password"),
+        "cookie": user.get("cookie"),
+        "cookie_expiry": user.get("cookie_expiry"),
+    }
+
 
 
 
 def get_user_by_chat_id(chat_id: int):
     return users_col.find_one({"chat_id": str(chat_id)})
+def save_cookie(chat_id, cookie, expiry_timestamp):
+    """Save session cookie for a user."""
+    users_col.update_one(
+        {"chat_id": str(chat_id)},
+        {"$set": {"cookie": cookie, "cookie_expiry": expiry_timestamp}},
+        upsert=True
+    )
