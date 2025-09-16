@@ -1,4 +1,5 @@
 import os
+import string
 import time
 import requests
 from datetime import datetime
@@ -22,7 +23,7 @@ URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 # ------------------------
 # Get credentials from DB
 # ------------------------
-def get_user_credentials(chat_id: int):
+def get_user_credentials(chat_id: string):
     """
     Returns (username, decrypted_password, cookie, cookie_expiry) for a user.
     """

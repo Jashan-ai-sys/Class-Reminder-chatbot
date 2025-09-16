@@ -22,7 +22,7 @@ def link_chat_id(username: str, chat_id: int):
     )
 
 def get_user(chat_id):
-    user = users_col.find_one({"chat_id": chat_id})
+    user = users_col.find_one({"chat_id": str(chat_id)})
     if not user:
         return None
     return {
