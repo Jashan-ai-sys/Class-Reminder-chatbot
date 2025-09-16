@@ -29,6 +29,7 @@ def get_user_credentials(chat_id: str):
     For now, cookie + expiry are None because we don't store them in DB.
     """
     row = get_user(chat_id)
+    print(f"[DEBUG] get_user({chat_id}) -> {row}")
     if not row:
         raise RuntimeError("❌ No credentials found. Please login first.")
 
@@ -38,6 +39,7 @@ def get_user_credentials(chat_id: str):
         raise RuntimeError("❌ Missing username/password for this user.")
 
     password = decrypt_password(password_enc)
+    
     return username, password, None, None   # 👈 return cookie=None, expiry=None
 
 

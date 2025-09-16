@@ -22,12 +22,21 @@ def link_chat_id(username: str, chat_id: int):
     )
 
 def get_user(chat_id):
-    # ensure chat_id is always string in DB
+    # Try matching as string
     user = users_col.find_one({"chat_id": str(chat_id)})
     if not user:
-        # try fallback in case stored as int
+        # Fallback: try int
         user = users_col.find_one({"chat_id": chat_id})
-    return user
+
+    if not user:
+        return None
+
+    return {
+        "chat_id": str(user.get("chat_id")),
+        "username": user.get("username"),
+        "password": user.get("password")
+    }
+
 
 
 def get_user_by_chat_id(chat_id: int):
