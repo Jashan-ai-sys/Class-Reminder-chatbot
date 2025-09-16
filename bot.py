@@ -99,7 +99,7 @@ class LPUClassBot:
         self.running = False
         self.reminder_sent = set()  
         self.start_time = datetime.now()
-    async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def myschedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id
         try:
             data = fetch_lpu_classes(chat_id)
@@ -158,7 +158,7 @@ class LPUClassBot:
         end = datetime.fromtimestamp(cls["endTime"] / 1000)
         join = cls.get("joinUrl", "")
         return f"📚 {title}\n🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n🔗 {join if join else 'No link'}"
-    async def schedule_reminders(application, chat_id: int):
+    async def schedule_reminders(self, application, chat_id: int):
                 try:
                     data = fetch_lpu_classes(chat_id)
                     classes = data.get("ref") or data.get("data") or data.get("classes", [])
