@@ -114,9 +114,9 @@ class LPUClassBot:
 async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_user.id
     try:
-        data = fetch_lpu_classes(chat_id)
+        data = fetch_lpu_classes(chat_id)  # call scraper with user chat_id
+        classes = data.get("classes") or data.get("ref") or data.get("data") or []
 
-        classes = data.get("ref") or data.get("data") or data.get("classes", [])
         if not classes:
             await update.message.reply_text("🎉 No upcoming classes found.")
             return
@@ -124,15 +124,22 @@ async def myschedule_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         response_lines = []
         for cls in classes:
             title = cls.get("title", "Unknown Class").strip()
-            start = datetime.fromtimestamp(cls["startTime"] / 1000)
-            end = datetime.fromtimestamp(cls["endTime"] / 1000)
+            start_ts = cls.get("startTime")
+            end_ts = cls.get("endTime")
+            if not start_ts or not end_ts:
+                continue
+
+            start = datetime.fromtimestamp(start_ts / 1000)
+            end = datetime.fromtimestamp(end_ts / 1000)
             status = cls.get("status", "unknown")
+            join = cls.get("joinUrl", "")
 
             response_lines.append(
                 f"📚 {title}\n"
                 f"🕘 {start.strftime('%A, %d %B %Y %I:%M %p')} – {end.strftime('%I:%M %p')}\n"
                 f"📌 Status: {status}\n"
-                f"—" * 40
+                + (f"🔗 {join}\n" if join else "")
+                + "—" * 40
             )
 
         await update.message.reply_text("\n".join(response_lines))
@@ -1523,6 +1530,7 @@ def main():
     application.add_handler(CommandHandler("test", test_command))
     application.add_handler(CommandHandler("export", export_command))
     application.add_handler(CommandHandler("myschedule",myschedule_command))
+    
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
 
