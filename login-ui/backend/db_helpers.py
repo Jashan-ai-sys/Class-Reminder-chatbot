@@ -9,7 +9,7 @@ users_col = db["users"]
 # Save only username + encrypted password
 def save_user(chat_id, username, password_enc):
     users_col.update_one(
-        {"chat_id": chat_id},
+        {"chat_id": str(chat_id)},
         {"$set": {"username": username, "password": password_enc}},
         upsert=True
     )
@@ -18,7 +18,7 @@ def save_user(chat_id, username, password_enc):
 def link_chat_id(username: str, chat_id: int):
     users_col.update_one(
         {"username": username},
-        {"$set": {"chat_id": chat_id}},
+        {"$set": {"chat_id": str(chat_id)}},
     )
 
 def get_user(chat_id):
@@ -32,4 +32,4 @@ def get_user(chat_id):
     }
 
 def get_user_by_chat_id(chat_id: int):
-    return users_col.find_one({"chat_id": chat_id})
+    return users_col.find_one({"chat_id": str(chat_id)})

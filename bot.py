@@ -99,7 +99,7 @@ class LPUClassBot:
         self.running = False
         self.reminder_sent = set()  
         self.start_time = datetime.now()
-    async def login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat_id
         frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
         login_url = f"{frontend_url}?chat_id={chat_id}"
@@ -1530,7 +1530,8 @@ def main():
     application.add_handler(CommandHandler("test", test_command))
     application.add_handler(CommandHandler("export", export_command))
     application.add_handler(CommandHandler("myschedule",myschedule_command))
-    
+    application.add_handler(CommandHandler("login", login_command))
+
     # Callback Query Handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
 
