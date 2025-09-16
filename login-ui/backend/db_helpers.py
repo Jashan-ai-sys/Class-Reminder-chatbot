@@ -22,16 +22,10 @@ def link_chat_id(username: str, chat_id: int):
     )
 
 def get_user(chat_id):
-    print(f"[DEBUG] Searching for chat_id={str(chat_id)} in DB")
     user = users_col.find_one({"chat_id": str(chat_id)})
-    print(f"[DEBUG] Found: {user}")
-    if not user:
-        return None
-    return {
-        "chat_id": str(user.get("chat_id")),
-        "username": user.get("username"),
-        "password": user.get("password")
-    }
+    print(f"[DEBUG] get_user({chat_id}) -> {user}")  # keep debug
+    return user
+
 
 
 def get_user_by_chat_id(chat_id: int):
