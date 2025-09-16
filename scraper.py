@@ -48,11 +48,19 @@ def get_user_credentials(chat_id: str):
 # Chrome driver (headless)
 # ------------------------
 def get_chrome_driver():
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    # Use system-installed Chromium + chromedriver
+    chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+    driver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+
+    chrome_options.binary_location = chrome_path
+    service = Service(driver_path)
+
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 
 # ------------------------
