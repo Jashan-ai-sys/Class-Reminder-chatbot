@@ -9,8 +9,8 @@ users_col = db["users"]
 # Save only username + encrypted password
 def save_user(chat_id, username, password_enc):
     users_col.update_one(
-        {"chat_id": str(chat_id)},
-        {"$set": {"username": username, "password": password_enc}},
+        {"chat_id": str(chat_id)},   # store as string
+        {"$set": {"username": username, "password": password_enc, "chat_id": str(chat_id)}},
         upsert=True
     )
 
@@ -22,21 +22,16 @@ def link_chat_id(username: str, chat_id: int):
     )
 
 def get_user(chat_id):
-    # Try matching as string
+    print(f"[DEBUG] Searching for chat_id={str(chat_id)} in DB")
     user = users_col.find_one({"chat_id": str(chat_id)})
-    if not user:
-        # Fallback: try int
-        user = users_col.find_one({"chat_id": chat_id})
-
+    print(f"[DEBUG] Found: {user}")
     if not user:
         return None
-
     return {
         "chat_id": str(user.get("chat_id")),
         "username": user.get("username"),
         "password": user.get("password")
     }
-
 
 
 def get_user_by_chat_id(chat_id: int):
