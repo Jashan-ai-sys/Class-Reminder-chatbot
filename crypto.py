@@ -16,6 +16,8 @@ def encrypt_password(password: str) -> bytes:
     return fernet.encrypt(password.encode())
 
 
-def decrypt_password(enc: bytes) -> str:
-    """Decrypt password from bytes back into string."""
+def decrypt_password(enc) -> str:
+    """Decrypt password from DB (handles str or bytes)."""
+    if isinstance(enc, str):
+        enc = enc.encode()  # convert base64 string → bytes
     return fernet.decrypt(enc).decode()

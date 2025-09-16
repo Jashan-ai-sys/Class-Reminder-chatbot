@@ -29,8 +29,6 @@ def get_user(chat_id):
         "chat_id": user.get("chat_id"),
         "username": user.get("username"),
         "password": user.get("password"),
-        "cookie": user.get("cookie"),
-        "cookie_expiry": user.get("cookie_expiry"),
     }
 
 
