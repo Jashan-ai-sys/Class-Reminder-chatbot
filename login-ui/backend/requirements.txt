@@ -4,3 +4,4 @@ pymongo
 cryptography
 python-dotenv
 python-multipart
+httpx==0.27.0
