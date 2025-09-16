@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import base64
 from scraper import fetch_lpu_classes
-
+from db_helpers import init_db
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 from crypto import encrypt_password
