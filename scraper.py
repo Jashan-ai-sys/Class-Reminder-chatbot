@@ -14,16 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import os
-import shutil
 
-print("🔍 Debugging Chrome paths...")
-for bin_name in ["chromium", "chromium-browser", "google-chrome", "google-chrome-stable"]:
-    path = shutil.which(bin_name)
-    print(f"{bin_name}: {path}")
-
-chromedriver_path = shutil.which("chromedriver")
-print(f"chromedriver: {chromedriver_path}")
 
 load_dotenv()
 
@@ -52,6 +43,21 @@ def get_user_credentials(chat_id: str):
     
     return username, password, None, None   # 👈 return cookie=None, expiry=None
 
+import shutil
+import subprocess
+
+print("🔍 Debugging Chrome paths...")
+print("chromium:", shutil.which("chromium"))
+print("chromium-browser:", shutil.which("chromium-browser"))
+print("google-chrome:", shutil.which("google-chrome"))
+print("google-chrome-stable:", shutil.which("google-chrome-stable"))
+print("chromedriver:", shutil.which("chromedriver"))
+
+try:
+    result = subprocess.run(["ls", "-l", "/usr/bin"], capture_output=True, text=True)
+    print(result.stdout)
+except Exception as e:
+    print("Subprocess error:", e)
 
 
 # ------------------------
@@ -62,16 +68,17 @@ def get_chrome_driver():
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--remote-debugging-port=9222")
 
-    # System-installed Chromium + Chromedriver
-    chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium-browser")
-    driver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+    chrome_path = shutil.which("chromium") or shutil.which("google-chrome")
+    driver_path = shutil.which("chromedriver")
+
+    if not chrome_path or not driver_path:
+        raise RuntimeError(f"❌ Chrome not found. chromium={chrome_path}, chromedriver={driver_path}")
 
     chrome_options.binary_location = chrome_path
     service = Service(driver_path)
-
     return webdriver.Chrome(service=service, options=chrome_options)
+
 
 
 # ------------------------
