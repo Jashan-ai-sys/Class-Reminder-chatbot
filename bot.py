@@ -99,13 +99,15 @@ class LPUClassBot:
         self.running = False
         self.reminder_sent = set()  
         self.start_time = datetime.now()
+    IST = timezone(timedelta(hours=5, minutes=30))
+
     async def myschedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id
         try:
             data = await fetch_lpu_classes(chat_id)
-            print(f"[DEBUG] myschedule_command called for chat_id={chat_id}") # call scraper with user chat_id
-            classes = data.get("classes") or data.get("ref") or data.get("data") or []
+            print(f"[DEBUG] myschedule_command called for chat_id={chat_id}") 
 
+            classes = data.get("classes") or data.get("ref") or data.get("data") or []
             if not classes:
                 await update.message.reply_text("🎉 No upcoming classes found.")
                 return
@@ -118,8 +120,10 @@ class LPUClassBot:
                 if not start_ts or not end_ts:
                     continue
 
-                start = datetime.fromtimestamp(start_ts / 1000)
-                end = datetime.fromtimestamp(end_ts / 1000)
+                # ✅ Interpret timestamps directly as IST
+                start = datetime.fromtimestamp(start_ts / 1000, tz=IST)
+                end = datetime.fromtimestamp(end_ts / 1000, tz=IST)
+
                 status = cls.get("status", "unknown")
                 join = cls.get("joinUrl", "")
 
@@ -135,7 +139,6 @@ class LPUClassBot:
 
         except Exception as e:
             await update.message.reply_text(f"❌ Error fetching classes: {e}")
-
 
 
     def load_classes(self) -> Dict:
