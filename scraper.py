@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
+from datetime import datetime, timezone, timedelta
 
 from db_helpers import get_user, save_cookie
 from crypto import decrypt_password
@@ -129,6 +130,7 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
 # ------------------------
 # Print Classes (debug)
 # ------------------------
+IST = timezone(timedelta(hours=5, minutes=30))
 def print_classes(data):
     classes = data.get("classes", [])
     if not classes:
@@ -137,8 +139,8 @@ def print_classes(data):
 
     for cls in classes:
         title = cls.get("title", "Unknown Class").strip()
-        start = datetime.fromtimestamp(cls["startTime"] / 1000)
-        end = datetime.fromtimestamp(cls["endTime"] / 1000)
+        start = datetime.fromtimestamp(cls["startTime"] / 1000, tz=timezone.utc).astimezone(IST)
+        end = datetime.fromtimestamp(cls["endTime"] / 1000, tz=timezone.utc).astimezone(IST)
         print(f"📚 {title}")
         print(f"🕘 {start:%A, %d %B %Y %I:%M %p} – {end:%I:%M %p}")
         print(f"📌 {cls.get('status','')}")
