@@ -89,7 +89,7 @@ COURSE_INFO = {
     "INT374": {"name": "Data Analytics with Power BI", "faculty": "TBD", "room": "MyClass-1"},
     "PEV301": {"name": "Verbal Ability", "faculty": "TBD", "room": "MyClass-1"}
 }
-
+IST = timezone(timedelta(hours=5, minutes=30))
 class LPUClassBot:
       # keep it empty so the AttributeError is gone
       # keep it empty so the AttributeError is gone
@@ -100,7 +100,7 @@ class LPUClassBot:
         self.running = False
         self.reminder_sent = set()  
         self.start_time = datetime.now()
-    IST = timezone(timedelta(hours=5, minutes=30))
+# IST = timezone(timedelta(hours=5, minutes=30))
 
     async def myschedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id

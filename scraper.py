@@ -99,7 +99,7 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
         "filters": {"showSelf": True, "status": "started,scheduled"},
     }
 
-    r = requests.post(URL, headers=headers, json=payload, verify=False)
+    r = requests.post(URL, headers=headers, json=payload)
     if r.status_code != 200:
         raise RuntimeError(f"Fetch failed {r.status_code}: {r.text[:200]}")
 
