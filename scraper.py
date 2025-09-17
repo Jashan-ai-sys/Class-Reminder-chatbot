@@ -3,7 +3,7 @@ import time
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
+from playwright.async_api import sync_playwright
 
 from db_helpers import get_user, save_cookie
 from crypto import decrypt_password
@@ -35,21 +35,22 @@ def get_user_credentials(chat_id: str):
 # ------------------------
 # Login with Playwright
 # ------------------------
-def playwright_login(username, password):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto("https://myclass.lpu.in")
+async def playwright_login(username, password):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        await page.goto("https://myclass.lpu.in")
 
-        page.fill("input[name=i]", username)
-        page.fill("input[name=p]", password)
-        page.click("button:has-text('Login')")
+        await page.fill("input[name=i]", username)
+        await page.fill("input[name=p]", password)
+        await page.click("button:has-text('Login')")
 
-        page.wait_for_selector("#cssmenu", timeout=30000)
+        await page.wait_for_selector("#cssmenu", timeout=30000)
         print(f"✅ Login successful for {username}: {page.url}")
 
-        cookies = page.context.cookies()
-        browser.close()
+        cookies = await context.cookies()
+        await browser.close()
 
         cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
         expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60)  # 7 days
@@ -59,7 +60,7 @@ def playwright_login(username, password):
 # ------------------------
 # Get valid cookie (reuse if not expired)
 # ------------------------
-def get_valid_cookie(chat_id: int):
+async def get_valid_cookie(chat_id: int):
     username, password, cookie, cookie_expiry = get_user_credentials(chat_id)
 
     if cookie and cookie_expiry and cookie_expiry > time.time():
@@ -67,20 +68,21 @@ def get_valid_cookie(chat_id: int):
         return cookie
 
     print("🔄 Logging in again…")
-    new_cookie, expiry = playwright_login(username, password)
+    new_cookie, expiry = await playwright_login_async(username, password)
     save_cookie(chat_id, new_cookie, expiry)
     return new_cookie
+
 
 # ------------------------
 # Fetch Classes
 # ------------------------
-def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
+async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
     if min_ts is None:
         min_ts = int(time.time() * 1000)
     if max_ts is None:
         max_ts = min_ts + 24 * 60 * 60 * 1000
 
-    cookie = get_valid_cookie(chat_id)
+    cookie = await get_valid_cookie_async(chat_id)
 
     headers = {
         "User-Agent": "Mozilla/5.0",
