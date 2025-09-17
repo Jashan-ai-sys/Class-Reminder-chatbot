@@ -4,87 +4,83 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
-import pymongo
-import urllib3
 
-# Disable SSL warnings (Codetantra sometimes gives cert issues)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from db_helpers import get_user, save_cookie
+from crypto import decrypt_password
 
-# ------------------------
-# Load ENV
-# ------------------------
 load_dotenv()
 
 URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
-USERNAME = os.getenv("LPU_USERNAME")
-PASSWORD = os.getenv("LPU_PASSWORD")
-MONGO_URI = os.getenv("MONGO_URI", "")
-
-if not USERNAME or not PASSWORD:
-    raise RuntimeError("❌ Please set LPU_USERNAME and LPU_PASSWORD in .env file")
 
 # ------------------------
-# MongoDB Setup
+# Get credentials from Mongo
 # ------------------------
-mongo_client = pymongo.MongoClient(MONGO_URI) if MONGO_URI else None
-db = mongo_client["lpu_bot"] if mongo_client else None
-cookies_col = db["cookies"] if db else None
+def get_user_credentials(chat_id: str):
+    row = get_user(chat_id)
+    if not row:
+        raise RuntimeError(f"❌ No credentials found in MongoDB for chat_id={chat_id}")
+
+    username = row.get("username")
+    password_enc = row.get("password")
+
+    if not username or not password_enc:
+        raise RuntimeError("❌ Missing username or password in DB")
+
+    password = decrypt_password(password_enc)
+    cookie = row.get("cookie")
+    cookie_expiry = row.get("cookie_expiry")
+
+    return username, password, cookie, cookie_expiry
 
 # ------------------------
-# Login & Get Cookie
+# Login with Playwright
 # ------------------------
-def playwright_login():
+def playwright_login(username, password):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-
         page.goto("https://myclass.lpu.in")
-        page.fill("input[name=i]", USERNAME)
-        page.fill("input[name=p]", PASSWORD)
-        page.click("button:has-text('Login')")
-        page.wait_for_selector("#cssmenu", timeout=30000)
 
-        print(f"✅ Login successful for {USERNAME}: {page.url}")
+        page.fill("input[name=i]", username)
+        page.fill("input[name=p]", password)
+        page.click("button:has-text('Login')")
+
+        page.wait_for_selector("#cssmenu", timeout=30000)
+        print(f"✅ Login successful for {username}: {page.url}")
 
         cookies = page.context.cookies()
-        cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
         browser.close()
 
-        expiry = int(time.time()) + (7 * 24 * 60 * 60)  # 7 days
-        return cookie_str, expiry
+        cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60)  # 7 days
+
+        return cookie_str, expiry_timestamp
 
 # ------------------------
-# Cookie Manager
+# Get valid cookie (reuse if not expired)
 # ------------------------
-def get_cookie():
-    if not cookies_col:
-        # fallback to always login
-        return playwright_login()[0]
+def get_valid_cookie(chat_id: int):
+    username, password, cookie, cookie_expiry = get_user_credentials(chat_id)
 
-    row = cookies_col.find_one({"username": USERNAME})
-    now = int(time.time())
+    if cookie and cookie_expiry and cookie_expiry > time.time():
+        print("✅ Using saved cookie")
+        return cookie
 
-    if row and row.get("cookie") and row.get("expiry", 0) > now:
-        return row["cookie"]
-
-    cookie, expiry = playwright_login()
-    cookies_col.update_one(
-        {"username": USERNAME},
-        {"$set": {"cookie": cookie, "expiry": expiry}},
-        upsert=True
-    )
-    return cookie
+    print("🔄 Logging in again…")
+    new_cookie, expiry = playwright_login(username, password)
+    save_cookie(chat_id, new_cookie, expiry)
+    return new_cookie
 
 # ------------------------
 # Fetch Classes
 # ------------------------
-def fetch_lpu_classes(min_ts=None, max_ts=None):
+def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
     if min_ts is None:
         min_ts = int(time.time() * 1000)
     if max_ts is None:
         max_ts = min_ts + 24 * 60 * 60 * 1000
 
-    cookie = get_cookie()
+    cookie = get_valid_cookie(chat_id)
 
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -129,7 +125,7 @@ def fetch_lpu_classes(min_ts=None, max_ts=None):
     return {"classes": normalized}
 
 # ------------------------
-# Print Classes
+# Print Classes (debug)
 # ------------------------
 def print_classes(data):
     classes = data.get("classes", [])
@@ -147,11 +143,12 @@ def print_classes(data):
         print("—" * 40)
 
 # ------------------------
-# Main
+# Standalone Test
 # ------------------------
 if __name__ == "__main__":
+    chat_id = int(os.getenv("TEST_CHAT_ID", "123456"))
     try:
-        data = fetch_lpu_classes()
+        data = fetch_lpu_classes(chat_id)
         print_classes(data)
     except Exception as e:
         print("❌ Error:", e)
