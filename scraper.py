@@ -3,7 +3,7 @@ import time
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
-from playwright.async_api import sync_playwright
+from playwright.async_api import async_playwright
 
 from db_helpers import get_user, save_cookie
 from crypto import decrypt_password
