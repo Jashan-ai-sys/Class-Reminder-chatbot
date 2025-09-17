@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20", "bash", "curl"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "playwright install --with-deps chromium"
+]
+
+[start]
+cmd = "python bot.py"

@@ -33,3 +33,4 @@ pymongo
 nest_asyncio
 python-multipart
 fastapi
+playwright

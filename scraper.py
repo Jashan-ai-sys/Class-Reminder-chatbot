@@ -1,130 +1,90 @@
 import os
-import string
 import time
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
-from db_helpers import get_user, save_cookie
-from crypto import decrypt_password
+from playwright.sync_api import sync_playwright
+import pymongo
+import urllib3
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+# Disable SSL warnings (Codetantra sometimes gives cert issues)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
+# ------------------------
+# Load ENV
+# ------------------------
 load_dotenv()
 
 URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
+USERNAME = os.getenv("LPU_USERNAME")
+PASSWORD = os.getenv("LPU_PASSWORD")
+MONGO_URI = os.getenv("MONGO_URI", "")
 
-
-# ------------------------
-# Get credentials from DB
-# ------------------------
-def get_user_credentials(chat_id: str):
-    """
-    Returns (username, decrypted_password, cookie, cookie_expiry) for a user.
-    For now, cookie + expiry are None because we don't store them in DB.
-    """
-    row = get_user(chat_id)
-    print(f"[DEBUG] get_user({chat_id}) -> {row}")
-    if not row:
-        raise RuntimeError("❌ No credentials found. Please login first.")
-
-    username = row.get("username")
-    password_enc = row.get("password")
-    if not username or not password_enc:
-        raise RuntimeError("❌ Missing username/password for this user.")
-
-    password = decrypt_password(password_enc)
-    
-    return username, password, None, None   # 👈 return cookie=None, expiry=None
-
-import shutil
-import subprocess
-
-print("🔍 Debugging Chrome paths...")
-print("chromium:", shutil.which("chromium"))
-print("chromium-browser:", shutil.which("chromium-browser"))
-print("google-chrome:", shutil.which("google-chrome"))
-print("google-chrome-stable:", shutil.which("google-chrome-stable"))
-print("chromedriver:", shutil.which("chromedriver"))
-
-try:
-    result = subprocess.run(["ls", "-l", "/usr/bin"], capture_output=True, text=True)
-    print(result.stdout)
-except Exception as e:
-    print("Subprocess error:", e)
-
+if not USERNAME or not PASSWORD:
+    raise RuntimeError("❌ Please set LPU_USERNAME and LPU_PASSWORD in .env file")
 
 # ------------------------
-# Chrome driver (headless)
+# MongoDB Setup
 # ------------------------
-def get_chrome_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-
-    chrome_path = shutil.which("chromium") or shutil.which("google-chrome")
-    driver_path = shutil.which("chromedriver")
-
-    if not chrome_path or not driver_path:
-        raise RuntimeError(f"❌ Chrome not found. chromium={chrome_path}, chromedriver={driver_path}")
-
-    chrome_options.binary_location = chrome_path
-    service = Service(driver_path)
-    return webdriver.Chrome(service=service, options=chrome_options)
-
-
+mongo_client = pymongo.MongoClient(MONGO_URI) if MONGO_URI else None
+db = mongo_client["lpu_bot"] if mongo_client else None
+cookies_col = db["cookies"] if db else None
 
 # ------------------------
-# Login & Save Cookie
+# Login & Get Cookie
 # ------------------------
-def login_and_get_cookie(chat_id: int):
-    username, password, _, _ = get_user_credentials(chat_id)
-    driver = get_chrome_driver()
+def playwright_login():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-    try:
-        driver.get("https://myclass.lpu.in")
+        page.goto("https://myclass.lpu.in")
+        page.fill("input[name=i]", USERNAME)
+        page.fill("input[name=p]", PASSWORD)
+        page.click("button:has-text('Login')")
+        page.wait_for_selector("#cssmenu", timeout=30000)
 
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.NAME, "i")))
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.NAME, "p")))
+        print(f"✅ Login successful for {USERNAME}: {page.url}")
 
-        driver.find_element(By.NAME, "i").send_keys(username)
-        driver.find_element(By.NAME, "p").send_keys(password)
-        driver.find_element(By.XPATH, "//button[contains(text(),'Login')]").click()
-
-        WebDriverWait(driver, 40).until(EC.presence_of_element_located((By.ID, "cssmenu")))
-        print(f"✅ Login successful for {username}: {driver.current_url}")
-
-        cookies = driver.get_cookies()
+        cookies = page.context.cookies()
         cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+        browser.close()
 
-        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60)
-        save_cookie(chat_id, cookie_str, expiry_timestamp)
+        expiry = int(time.time()) + (7 * 24 * 60 * 60)  # 7 days
+        return cookie_str, expiry
 
-        return cookie_str
-    finally:
-        driver.quit()
+# ------------------------
+# Cookie Manager
+# ------------------------
+def get_cookie():
+    if not cookies_col:
+        # fallback to always login
+        return playwright_login()[0]
 
+    row = cookies_col.find_one({"username": USERNAME})
+    now = int(time.time())
+
+    if row and row.get("cookie") and row.get("expiry", 0) > now:
+        return row["cookie"]
+
+    cookie, expiry = playwright_login()
+    cookies_col.update_one(
+        {"username": USERNAME},
+        {"$set": {"cookie": cookie, "expiry": expiry}},
+        upsert=True
+    )
+    return cookie
 
 # ------------------------
 # Fetch Classes
 # ------------------------
-def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
-    _, _, cookie, cookie_expiry = get_user_credentials(chat_id)
-
+def fetch_lpu_classes(min_ts=None, max_ts=None):
     if min_ts is None:
         min_ts = int(time.time() * 1000)
     if max_ts is None:
         max_ts = min_ts + 24 * 60 * 60 * 1000
 
-    if not cookie or (cookie_expiry and cookie_expiry < time.time()):
-        cookie = login_and_get_cookie(chat_id)
+    cookie = get_cookie()
 
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -147,7 +107,6 @@ def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
     data = r.json()
     classes = data.get("ref") or data.get("data") or []
 
-    # Normalize to have startTime/endTime
     normalized = []
     for cls in classes:
         slots = cls.get("extra", {}).get("recurrence", {}).get("slots", [])
@@ -169,9 +128,8 @@ def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
 
     return {"classes": normalized}
 
-
 # ------------------------
-# Print Classes (for debug)
+# Print Classes
 # ------------------------
 def print_classes(data):
     classes = data.get("classes", [])
@@ -188,14 +146,12 @@ def print_classes(data):
         print(f"📌 {cls.get('status','')}")
         print("—" * 40)
 
-
 # ------------------------
-# Standalone Test
+# Main
 # ------------------------
 if __name__ == "__main__":
-    test_chat_id = int(os.getenv("TEST_CHAT_ID", "123456"))
     try:
-        data = fetch_lpu_classes(test_chat_id)
+        data = fetch_lpu_classes()
         print_classes(data)
     except Exception as e:
         print("❌ Error:", e)
