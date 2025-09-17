@@ -116,6 +116,7 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
                 new_cls["endTime"] = slot["end"]
                 new_cls["status"] = slot.get("status", cls.get("status", ""))
                 normalized.append(new_cls)
+
         elif cls.get("scheduledStartDayTime") and cls.get("scheduledEndDayTime"):
             base = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             start = base.timestamp() * 1000 + cls["scheduledStartDayTime"]
@@ -124,6 +125,12 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
             new_cls["startTime"] = start
             new_cls["endTime"] = end
             normalized.append(new_cls)
+
+        else:
+            # Fallback: use raw start/end if already present
+            if cls.get("startTime") and cls.get("endTime"):
+                normalized.append(cls)
+
 
     return {"classes": normalized}
 
