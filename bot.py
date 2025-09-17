@@ -102,7 +102,7 @@ class LPUClassBot:
     async def myschedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id
         try:
-            data = fetch_lpu_classes(chat_id)
+            data = await fetch_lpu_classes(chat_id)
             print(f"[DEBUG] myschedule_command called for chat_id={chat_id}") # call scraper with user chat_id
             classes = data.get("classes") or data.get("ref") or data.get("data") or []
 
@@ -160,7 +160,8 @@ class LPUClassBot:
         return f"📚 {title}\n🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n🔗 {join if join else 'No link'}"
     async def schedule_reminders(self, application, chat_id: int):
                 try:
-                    data = fetch_lpu_classes(chat_id)
+                    classes = await fetch_lpu_classes(chat_id)   # ✅ add await
+
                     classes = data.get("ref") or data.get("data") or data.get("classes", [])
 
                     for cls in classes:
