@@ -1,9 +1,14 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "bash", "curl"]
+nixPkgs = [
+  "python311",
+  "python311Packages.pip",
+  "nodejs_20",
+  "bash",
+  "curl"
+]
 
 [phases.install]
 cmds = [
-  "python -m ensurepip",
   "pip install --upgrade pip",
   "pip install -r requirements.txt",
   "playwright install --with-deps chromium"
