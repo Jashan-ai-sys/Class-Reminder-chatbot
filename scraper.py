@@ -68,7 +68,7 @@ async def get_valid_cookie(chat_id: int):
         return cookie
 
     print("🔄 Logging in again…")
-    new_cookie, expiry = await playwright_login_async(username, password)
+    new_cookie, expiry = await playwright_login(username, password)
     save_cookie(chat_id, new_cookie, expiry)
     return new_cookie
 
@@ -82,7 +82,7 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
     if max_ts is None:
         max_ts = min_ts + 24 * 60 * 60 * 1000
 
-    cookie = await get_valid_cookie_async(chat_id)
+    cookie = await get_valid_cookie(chat_id)
 
     headers = {
         "User-Agent": "Mozilla/5.0",
