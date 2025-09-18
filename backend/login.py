@@ -39,7 +39,8 @@ async def get_schedule(chat_id: int):
         return {"error": str(e)}
 @app.on_event("startup")
 async def startup_event():
-    
+    from bot import main, telegram_app
+    main() 
     await telegram_app.initialize()
     await telegram_app.start()
 
