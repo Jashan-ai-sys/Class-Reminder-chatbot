@@ -23,10 +23,30 @@ def link_chat_id(username: str, chat_id: int):
 
 def get_user(chat_id):
     user = users_col.find_one({"chat_id": str(chat_id)})
-    print(f"[DEBUG] get_user({chat_id}) -> {user}")  # keep debug
-    return user
+    if not user:
+        return None
+    return {
+        "chat_id": user.get("chat_id"),
+        "username": user.get("username"),
+        "password": user.get("password"),
+    }
+
 
 
 
 def get_user_by_chat_id(chat_id: int):
     return users_col.find_one({"chat_id": str(chat_id)})
+def save_cookie(chat_id, cookie, expiry_timestamp):
+    """Save session cookie for a user."""
+    users_col.update_one(
+        {"chat_id": str(chat_id)},
+        {"$set": {"cookie": cookie, "cookie_expiry": expiry_timestamp}},
+        upsert=True
+    )
+def init_db():
+    """Initialize MongoDB collections and indexes if needed."""
+    # ensure chat_id is indexed/unique
+    try:
+        users_col.create_index("chat_id", unique=True)
+    except Exception as e:
+        print(f"[WARN] Could not create index on chat_id: {e}")

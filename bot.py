@@ -10,12 +10,12 @@ from datetime import datetime, timedelta
    # or whatever function you defined
 from typing import Dict, List, Optional
 import base64
-from scraper import fetch_lpu_classes
-from db_helpers import init_db
+from common.scraper import fetch_lpu_classes
+from common.db_helpers import init_db
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
-from crypto import encrypt_password
-from db_helpers import save_user
+from common.crypto import encrypt_password
+from common.db_helpers import save_user
 from datetime import datetime, timezone, timedelta
 from telegram.ext import JobQueue
 
@@ -421,7 +421,7 @@ bot = LPUClassBot()
 
 # In bot.py
 # Make sure to import your new helper function
-from db_helpers import get_user, save_user # Assuming you have these
+from common.db_helpers import get_user, save_user # Assuming you have these
 
 
 
