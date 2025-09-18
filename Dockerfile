@@ -20,4 +20,4 @@ RUN playwright install --with-deps chromium
 COPY . .
 
 # Run bot + backend together
-CMD ["supervisord", "-c", "/app/supervisord.conf"]
+CMD ["uvicorn", "backend.login:app", "--host", "0.0.0.0", "--port", "8080"]
