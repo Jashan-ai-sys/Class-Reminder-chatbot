@@ -101,7 +101,24 @@ class LPUClassBot:
         self.reminder_sent = set()  
         self.start_time = datetime.now()
 # IST = timezone(timedelta(hours=5, minutes=30))
+    # In bot.py
 
+    async def reminders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Shows reminder time options to the user."""
+        keyboard = [
+            [
+                InlineKeyboardButton("⏰ 10 mins before", callback_data="set_reminder_10"),
+                InlineKeyboardButton("⏰ 5 mins before", callback_data="set_reminder_5"),
+            ],
+            [
+                InlineKeyboardButton("🔔 At class time (0 mins)", callback_data="set_reminder_0"),
+            ],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            "Please choose your preferred class reminder time:",
+            reply_markup=reply_markup
+        )
     async def myschedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id
         try:
@@ -162,28 +179,35 @@ class LPUClassBot:
         end = datetime.fromtimestamp(cls["endTime"] / 1000)
         join = cls.get("joinUrl", "")
         return f"📚 {title}\n🕘 {start.strftime('%I:%M %p')} – {end.strftime('%I:%M %p')}\n🔗 {join if join else 'No link'}"
+    # In bot.py, inside the LPUClassBot class
+
     async def schedule_reminders(self, application, chat_id: int):
-                try:
-                    classes = await fetch_lpu_classes(chat_id)   # ✅ add await
+        try:
+            # 1. Get the user's preferred reminder time from the database
+            reminder_minutes = get_reminder_preference(chat_id)
+            print(f"Scheduling reminders for {chat_id} with a {reminder_minutes}-minute lead time.")
 
-                    classes = data.get("ref") or data.get("data") or data.get("classes", [])
+            data = await fetch_lpu_classes(chat_id)
+            classes = data.get("ref") or data.get("data") or data.get("classes", [])
 
-                    for cls in classes:
-                        title = cls.get("title", "Class").strip()
-                        start_time = datetime.fromtimestamp(cls["startTime"] / 1000)
+            for cls in classes:
+                title = cls.get("title", "Class").strip()
+                start_time = datetime.fromtimestamp(cls["startTime"] / 1000)
 
-                        reminder_time = start_time - timedelta(minutes=10)
-                        if reminder_time > datetime.now():
-                            application.job_queue.run_once(
-                                lambda ctx: ctx.bot.send_message(
-                                    chat_id, f"⏰ Reminder: {title} in 10 mins"
-                                ),
-                                when=reminder_time,
-                                chat_id=chat_id,
-                            )
-                    print(f"✅ Reminders scheduled for {chat_id}")
-                except Exception as e:
-                    print(f"⚠️ Could not schedule reminders: {e}")
+                # 2. Use the user's preference to calculate the reminder time
+                reminder_time = start_time - timedelta(minutes=reminder_minutes)
+
+                if reminder_time > datetime.now():
+                    application.job_queue.run_once(
+                        lambda ctx: ctx.bot.send_message(
+                            chat_id, f"⏰ Reminder: '{title}' starts in {reminder_minutes} mins!" if reminder_minutes > 0 else f"🔔 Your class '{title}' is starting now!"
+                        ),
+                        when=reminder_time,
+                        chat_id=chat_id,
+                    )
+            print(f"✅ Reminders scheduled for {chat_id}")
+        except Exception as e:
+            print(f"⚠️ Could not schedule reminders: {e}")
 
 
     def save_classes(self):
@@ -326,7 +350,7 @@ class LPUClassBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handles the /start command, routing new users to login and welcoming back existing ones."""
         print(f"🔥 /start command triggered by {update.effective_user.id}")
-        await update.message.reply_text("Hello! Bot is working ✅")
+        
         user = update.effective_user
         chat_id = user.id
         
@@ -945,6 +969,25 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles all inline keyboard button presses."""
     query = update.callback_query
     await query.answer()
+    data = query.data
+      # --- NEW: Handle Reminder Preference Buttons ---
+    if data.startswith("set_reminder_"):
+        minutes_str = data.split('_')[-1] # Extracts the number part, e.g., "10"
+        minutes = int(minutes_str)
+        chat_id = query.from_user.id
+
+        # Save the preference to the database
+        bot.set_reminder_preference(chat_id, minutes)
+
+        # Give user feedback by editing the message
+        feedback_text = ""
+        if minutes > 0:
+            feedback_text = f"✅ Your reminders are now set to {minutes} minutes before each class."
+        else:
+            feedback_text = "✅ Your reminders are now set for the exact start time of each class."
+
+        await query.edit_message_text(text=feedback_text)
+        return
     
     user_id = query.from_user.id
     
@@ -1508,6 +1551,7 @@ def main():
     telegram_app.add_handler(CommandHandler("remove", remove_class_command))
     telegram_app.add_handler(CommandHandler("addtimetable", addtimetable_command))
     telegram_app.add_handler(CommandHandler("next", next_class_command))
+    telegram_app.add_handler(CommandHandler("reminders", bot.reminders_command))
     telegram_app.add_handler(CommandHandler("today", today_classes_command))
     telegram_app.add_handler(CommandHandler("week", week_classes_command))
     telegram_app.add_handler(CommandHandler("clear", clear_classes_command))

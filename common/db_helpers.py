@@ -50,3 +50,35 @@ def init_db():
         users_col.create_index("chat_id", unique=True)
     except Exception as e:
         print(f"[WARN] Could not create index on chat_id: {e}")
+# In common/db_helpers.py
+
+def set_reminder_preference(chat_id: int, minutes: int):
+    """Saves the user's preferred reminder time in minutes."""
+    if not client:
+        print("⚠️ DB not connected. Cannot set reminder preference.")
+        return
+
+    try:
+        db = client['lpu_bot_db']
+        users = db['users']
+        users.update_one(
+            {'chat_id': chat_id},
+            {'$set': {'reminder_minutes': minutes}},
+            upsert=True  # Ensure user document is created if it doesn't exist
+        )
+        print(f"✅ Reminder preference for {chat_id} set to {minutes} minutes.")
+    except Exception as e:
+        print(f"❌ Error setting reminder preference for {chat_id}: {e}")
+
+def get_reminder_preference(chat_id: int) -> int:
+    """Gets the user's preferred reminder time. Defaults to 10 minutes."""
+    if not client:
+        print("⚠️ DB not connected. Using default reminder time.")
+        return 10  # Default value
+
+    db = client['lpu_bot_db']
+    users = db['users']
+    user = users.find_one({'chat_id': chat_id})
+
+    # Return the user's preference, or 10 if it's not set
+    return user.get('reminder_minutes', 10) if user else 10
