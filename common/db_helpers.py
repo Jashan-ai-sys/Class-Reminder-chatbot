@@ -1,20 +1,30 @@
-# In common/db_helpers.py
-
 import os
-from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient # Use the ASYNC motor driver
 from pymongo.errors import ConnectionFailure
 from datetime import datetime
 
-# Define global variables, but leave them empty until init_db() is called.
+# Define global variables, to be initialized by init_db()
 client = None
 db = None
 users_col = None
 
-def init_db():
-    """
-    Initializes the database connection and sets up the collections.
-    This should be called once when the application starts.
-    """
+# Save only username + encrypted password
+def save_user(chat_id, username, password_enc):
+    users_col.update_one(
+        {"chat_id": str(chat_id)},   # store as string
+        {"$set": {"username": username, "password": password_enc, "chat_id": str(chat_id)}},
+        upsert=True
+    )
+
+# Link Telegram chat_id later
+def link_chat_id(username: str, chat_id: int):
+    users_col.update_one(
+        {"username": username},
+        {"$set": {"chat_id": str(chat_id)}},
+    )
+
+async def init_db():
+    """Initializes and actively tests the async database connection."""
     global client, db, users_col
     MONGO_URI = os.getenv("MONGO_URI")
 
@@ -23,80 +33,79 @@ def init_db():
         return
 
     try:
-        # Establish the connection
-        client = MongoClient(MONGO_URI)
-        client.admin.command('ismaster') # A cheap command to verify the connection
+        print("Connecting to MongoDB...")
+        client = AsyncIOMotorClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        await client.admin.command('ping') # Actively test the connection
         
-        # Use one consistent database and collection name
-        db = client['lpu_bot_db'] 
+        db = client['lpu_bot_db']
         users_col = db['users']
         
         print("✅ MongoDB connection successful.")
         
-        # Optional: Create an index for faster lookups
-        users_col.create_index("chat_id", unique=True)
-
-    except ConnectionFailure as e:
-        client = None # Reset on failure
-        print(f"❌ FATAL ERROR: Could not connect to MongoDB. Error: {e}")
     except Exception as e:
-        client = None # Reset on failure
-        print(f"❌ An unexpected error occurred during DB initialization: {e}")
+        client = None
+        print(f"❌ FATAL ERROR: Could not connect to MongoDB. Error: {e}")
 
-def get_user(chat_id: int):
+async def get_user(chat_id: int):
     """Fetches a user by their integer chat_id."""
-    if not users_col:
+    # This is the corrected check
+    if users_col is None:
         print("⚠️ DB not connected. Cannot get user.")
         return None
-    return users_col.find_one({"chat_id": chat_id})
+    return await users_col.find_one({"chat_id": chat_id})
 
-def save_user(chat_id: int, username: str, password_enc: str):
-    """Saves or updates user credentials using an integer chat_id."""
-    if not users_col:
-        print("⚠️ DB not connected. Cannot save user.")
-        return
-        
-    users_col.update_one(
-        {"chat_id": chat_id},  # Use integer for consistency
-        {"$set": {
-            "username": username, 
-            "password": password_enc, 
-            "updated_at": datetime.now()
-        }},
+async def save_user(chat_id: int, username: str, password_enc: str):
+    """Saves or updates user credentials asynchronously."""
+    if users_col is None: return
+    
+    await users_col.update_one(
+        {"chat_id": chat_id},
+        {"$set": { "username": username, "password": password_enc, "updated_at": datetime.now() }},
         upsert=True
     )
     print(f"✅ User data saved for chat_id: {chat_id}")
 
-def save_cookie(chat_id: int, cookie: dict, expiry_timestamp: float):
+
+
+
+def get_user_by_chat_id(chat_id: int):
+    return users_col.find_one({"chat_id": str(chat_id)})
+def save_cookie(chat_id, cookie, expiry_timestamp):
     """Save session cookie for a user."""
-    if not users_col:
-        print("⚠️ DB not connected. Cannot save cookie.")
-        return
-        
     users_col.update_one(
-        {"chat_id": chat_id},  # Use integer
+        {"chat_id": str(chat_id)},
         {"$set": {"cookie": cookie, "cookie_expiry": expiry_timestamp}},
         upsert=True
     )
 
+
 def set_reminder_preference(chat_id: int, minutes: int):
     """Saves the user's preferred reminder time in minutes."""
-    if not users_col:
+    if not client:
         print("⚠️ DB not connected. Cannot set reminder preference.")
         return
 
-    users_col.update_one(
-        {'chat_id': chat_id}, # Use integer
-        {'$set': {'reminder_minutes': minutes}},
-        upsert=True
-    )
-    print(f"✅ Reminder preference for {chat_id} set to {minutes} minutes.")
+    try:
+        db = client['lpu_bot_db']
+        users = db['users']
+        users.update_one(
+            {'chat_id': chat_id},
+            {'$set': {'reminder_minutes': minutes}},
+            upsert=True  # Ensure user document is created if it doesn't exist
+        )
+        print(f"✅ Reminder preference for {chat_id} set to {minutes} minutes.")
+    except Exception as e:
+        print(f"❌ Error setting reminder preference for {chat_id}: {e}")
 
 def get_reminder_preference(chat_id: int) -> int:
     """Gets the user's preferred reminder time. Defaults to 10 minutes."""
-    if not users_col:
+    if not client:
         print("⚠️ DB not connected. Using default reminder time.")
         return 10  # Default value
 
-    user = users_col.find_one({'chat_id': chat_id}) # Use integer
+    db = client['lpu_bot_db']
+    users = db['users']
+    user = users.find_one({'chat_id': chat_id})
+
+    # Return the user's preference, or 10 if it's not set
     return user.get('reminder_minutes', 10) if user else 10
