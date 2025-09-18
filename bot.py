@@ -1513,7 +1513,12 @@ def main():
     telegram_app.add_handler(CommandHandler("test", test_command))
     telegram_app.add_handler(CommandHandler("export", export_command))
     telegram_app.add_handler(CommandHandler("myschedule", LPUClassBot.myschedule_command))
+    async def debug_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        print("[DEBUG UPDATE]", update)  # <- will print every update in Railway logs
+        if update.message:
+            await update.message.reply_text("✅ Bot received your message!")
 
+    telegram_app.add_handler(MessageHandler(filters.ALL, debug_all))
     telegram_app.add_handler(CallbackQueryHandler(button_callback))
 
     return telegram_app
