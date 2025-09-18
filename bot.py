@@ -1528,12 +1528,7 @@ def main():
         return
     
     # This starts the server AFTER all handlers are registered
-    application.run_webhook(
-       listen="0.0.0.0",
-       port=PORT,
-       url_path=WEBHOOK_PATH,
-       webhook_url=f"{APP_URL}{WEBHOOK_PATH}"
-    )
+  
 
 if __name__ == "__main__":
     main()

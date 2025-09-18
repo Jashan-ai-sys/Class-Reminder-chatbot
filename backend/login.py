@@ -1,11 +1,12 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from common.db_helpers import save_user
 from common.crypto import encrypt_password
 import os
 import httpx
 from common.scraper import fetch_lpu_classes
-
+from telegram import Update
+from bot import telegram_app  
 app = FastAPI()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
@@ -43,3 +44,10 @@ async def get_schedule(chat_id: str):
 @app.get("/test")
 async def test():
     return {"status": "ok", "message": "🚀 Backend is running fine on Railway!"}
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.process_update(update)
+    return {"ok": True}
