@@ -8,17 +8,6 @@ from db_helpers import save_user, save_cookie
 
 app = FastAPI()
 
-# Same webhook path you used in bot.py
-WEBHOOK_PATH = "/superSecretBotPath734hjw"
-
-
-# ✅ Telegram Webhook
-@app.post(WEBHOOK_PATH)
-async def telegram_webhook(request: Request):
-    data = await request.json()
-    update = Update.de_json(data, telegram_app.bot)
-    await telegram_app.process_update(update)
-    return {"ok": True}
 
 
 # ✅ Login route (frontend will call this)
@@ -48,3 +37,19 @@ async def get_schedule(chat_id: int):
         return data
     except Exception as e:
         return {"error": str(e)}
+@app.on_event("startup")
+async def startup_event():
+    await telegram_app.initialize()
+    await telegram_app.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await telegram_app.stop()
+    await telegram_app.shutdown()
+
+@app.post("/superSecretBotPath734hjw")
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.process_update(update)
+    return {"ok": True}
