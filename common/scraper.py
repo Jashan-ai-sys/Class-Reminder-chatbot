@@ -1,5 +1,6 @@
 import os
 import time
+import aiohttp 
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
@@ -16,8 +17,8 @@ URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 # ------------------------
 # Get credentials from Mongo
 # ------------------------
-def get_user_credentials(chat_id: str):
-    row = get_user(chat_id)
+async def get_user_credentials(chat_id: str):
+    row = await get_user(chat_id)
     if not row:
         raise RuntimeError(f"❌ No credentials found in MongoDB for chat_id={chat_id}")
 
@@ -62,7 +63,7 @@ async def playwright_login(username, password):
 # Get valid cookie (reuse if not expired)
 # ------------------------
 async def get_valid_cookie(chat_id: int):
-    username, password, cookie, cookie_expiry = get_user_credentials(chat_id)
+    username, password, cookie, cookie_expiry = await get_user_credentials(chat_id)
 
     if cookie and cookie_expiry and cookie_expiry > time.time():
         print("✅ Using saved cookie")
@@ -70,7 +71,7 @@ async def get_valid_cookie(chat_id: int):
 
     print("🔄 Logging in again…")
     new_cookie, expiry = await playwright_login(username, password)
-    save_cookie(chat_id, new_cookie, expiry)
+    await save_cookie(chat_id, new_cookie, expiry)
     return new_cookie
 
 
