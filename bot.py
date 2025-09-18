@@ -341,7 +341,7 @@ class LPUClassBot:
         if db_user:
             # User is already registered, welcome them back
             await update.message.reply_text(f"Welcome back, {user.first_name}! I'm already set up to send you reminders. 🚀")
-            await bot.schedule_reminders(chat_id)
+            await bot.schedule_reminders(application,chat_id)
         else:
             # New user, prompt them to log in
             frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")

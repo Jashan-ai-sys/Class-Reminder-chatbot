@@ -4,6 +4,7 @@ from db_helpers import save_user
 from crypto import encrypt_password
 import os
 import httpx
+from scraper import fetch_lpu_classes
 
 app = FastAPI()
 
@@ -31,6 +32,13 @@ async def login_submit(chat_id: str, username: str = Form(...), password: str = 
         print(f"⚠️ Could not notify bot: {e}")
 
     return {"status": "success"}
+@app.post("/schedule/{chat_id}")
+async def get_schedule(chat_id: str):
+    try:
+        data = await fetch_lpu_classes(int(chat_id))
+        return data
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/test")
 async def test():
