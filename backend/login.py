@@ -51,7 +51,8 @@ async def shutdown_event():
 async def telegram_webhook(request: Request):
     data = await request.json()
     print("🚀 Webhook called with:", data)
-
+    print("➡️ Passing update to telegram_app.process_update...")
     update = Update.de_json(data, telegram_app.bot)
     await telegram_app.process_update(update)
+    print("✅ Update processed")
     return {"ok": True}
