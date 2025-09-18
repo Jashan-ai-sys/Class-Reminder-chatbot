@@ -1489,36 +1489,36 @@ def main():
         return
 
     # Give the global bot instance access to the application
-    bot.application = application
+    bot.application = telegram_app
     
     # --- Register ALL your handlers here ---
-    application.add_handler(setup_handler)
-    application.add_handler(CommandHandler("editschedule", editschedule_command))
-    application.add_handler(CommandHandler("generateschedule", generate_schedule_command))
-    application.add_handler(CommandHandler("connect_calendar", connect_calendar_command))
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'localhost:8080'), handle_google_callback))
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
-    application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    
+    telegram_app.add_handler(setup_handler)
+    telegram_app.add_handler(CommandHandler("editschedule", editschedule_command))
+    telegram_app.add_handler(CommandHandler("generateschedule", generate_schedule_command))
+    telegram_app.add_handler(CommandHandler("connect_calendar", connect_calendar_command))
+    telegram_app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'localhost:8080'), handle_google_callback))
+    telegram_app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+    telegram_app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+
     # Command Handlers
-    application.add_handler(CommandHandler("start", bot.start_command))
-    application.add_handler(CommandHandler("help",help_command))
-    application.add_handler(CommandHandler("add", add_class_command))
-    application.add_handler(CommandHandler("list", list_classes_command))
-    application.add_handler(CommandHandler("remove", remove_class_command))
-    application.add_handler(CommandHandler("addtimetable", addtimetable_command))
-    application.add_handler(CommandHandler("next", next_class_command))
-    application.add_handler(CommandHandler("today", today_classes_command))
-    application.add_handler(CommandHandler("week", week_classes_command))
-    application.add_handler(CommandHandler("clear", clear_classes_command))
-    application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("test", test_command))
-    application.add_handler(CommandHandler("export", export_command))
-    application.add_handler(CommandHandler("myschedule", bot.myschedule_command))
+    telegram_app.add_handler(CommandHandler("start", bot.start_command))
+    telegram_app.add_handler(CommandHandler("help",help_command))
+    telegram_app.add_handler(CommandHandler("add", add_class_command))
+    telegram_app.add_handler(CommandHandler("list", list_classes_command))
+    telegram_app.add_handler(CommandHandler("remove", remove_class_command))
+    telegram_app.add_handler(CommandHandler("addtimetable", addtimetable_command))
+    telegram_app.add_handler(CommandHandler("next", next_class_command))
+    telegram_app.add_handler(CommandHandler("today", today_classes_command))
+    telegram_app.add_handler(CommandHandler("week", week_classes_command))
+    telegram_app.add_handler(CommandHandler("clear", clear_classes_command))
+    telegram_app.add_handler(CommandHandler("status", status_command))
+    telegram_app.add_handler(CommandHandler("test", test_command))
+    telegram_app.add_handler(CommandHandler("export", export_command))
+    telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
 
 
     # Callback Query Handler for buttons
-    application.add_handler(CallbackQueryHandler(button_callback))
+    telegram_app.add_handler(CallbackQueryHandler(button_callback))
 
     # --- This is the corrected webhook setup ---
     # It now uses your WEBHOOK_PATH environment variable
