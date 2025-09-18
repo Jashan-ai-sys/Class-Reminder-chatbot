@@ -1,10 +1,11 @@
 import os
 import time
+
 from fastapi import FastAPI, Request
 from telegram import Update
 from bot import telegram_app        # <-- Application instance from bot.py
-from scraper import fetch_lpu_classes
-from db_helpers import save_user, save_cookie
+from common.scraper import fetch_lpu_classes
+from common.db_helpers import save_user, save_cookie
 
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,7 +32,7 @@ async def login_user(chat_id: int, request: Request):
             return {"error": "Missing username or password"}
 
         # Save to Mongo
-        save_user(chat_id, username, password_enc)
+        common.save_user(chat_id, username, password_enc)
 
         return {"status": "ok", "chat_id": chat_id}
     except Exception as e:
