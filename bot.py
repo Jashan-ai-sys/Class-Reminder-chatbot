@@ -1490,7 +1490,7 @@ def main():
         logger.critical("BOT_TOKEN is not set. Please add your token to the script.")
         return None
 
-    bot = LPUClassBot()
+    
 
     # Register all handlers on telegram_app
     telegram_app.add_handler(setup_handler)
