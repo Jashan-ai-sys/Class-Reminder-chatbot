@@ -1,7 +1,7 @@
 import os
 import sys
-import time
-sys.path.append(os.path.abspath(os.path.join(os.path.common(db_helpers.py), '..')))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import time
 from common import db_helpers
 from fastapi import FastAPI, Request
