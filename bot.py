@@ -1490,9 +1490,9 @@ def main():
         logger.critical("BOT_TOKEN is not set. Please add your token to the script.")
         return None
 
-    bot.application = telegram_app
+    bot = LPUClassBot()
 
-    # Register all handlers
+    # Register all handlers on telegram_app
     telegram_app.add_handler(setup_handler)
     telegram_app.add_handler(CommandHandler("editschedule", editschedule_command))
     telegram_app.add_handler(CommandHandler("generateschedule", generate_schedule_command))
@@ -1501,29 +1501,31 @@ def main():
     telegram_app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     telegram_app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
-    application.add_handler(CommandHandler("start", bot.start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("add", add_class_command))
-    application.add_handler(CommandHandler("list", list_classes_command))
-    application.add_handler(CommandHandler("remove", remove_class_command))
-    application.add_handler(CommandHandler("addtimetable", addtimetable_command))
-    application.add_handler(CommandHandler("next", next_class_command))
-    application.add_handler(CommandHandler("today", today_classes_command))
-    application.add_handler(CommandHandler("week", week_classes_command))
-    application.add_handler(CommandHandler("clear", clear_classes_command))
-    application.add_handler(CommandHandler("status", status_command))
-    application.add_handler(CommandHandler("test", test_command))
-    application.add_handler(CommandHandler("export", export_command))
-    application.add_handler(CommandHandler("myschedule", bot.myschedule_command))
+    telegram_app.add_handler(CommandHandler("start", bot.start_command))
+    telegram_app.add_handler(CommandHandler("help", help_command))
+    telegram_app.add_handler(CommandHandler("add", add_class_command))
+    telegram_app.add_handler(CommandHandler("list", list_classes_command))
+    telegram_app.add_handler(CommandHandler("remove", remove_class_command))
+    telegram_app.add_handler(CommandHandler("addtimetable", addtimetable_command))
+    telegram_app.add_handler(CommandHandler("next", next_class_command))
+    telegram_app.add_handler(CommandHandler("today", today_classes_command))
+    telegram_app.add_handler(CommandHandler("week", week_classes_command))
+    telegram_app.add_handler(CommandHandler("clear", clear_classes_command))
+    telegram_app.add_handler(CommandHandler("status", status_command))
+    telegram_app.add_handler(CommandHandler("test", test_command))
+    telegram_app.add_handler(CommandHandler("export", export_command))
+    telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
+
     async def debug_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print("[DEBUG UPDATE]", update)  # <- will print every update in Railway logs
         if update.message:
             await update.message.reply_text("✅ Bot received your message!")
 
-    application.add_handler(MessageHandler(filters.ALL, debug_all))
-    application.add_handler(CallbackQueryHandler(button_callback))
+    telegram_app.add_handler(MessageHandler(filters.ALL, debug_all))
+    telegram_app.add_handler(CallbackQueryHandler(button_callback))
 
     return telegram_app
+
 
 if __name__ == "__main__":
     application = main()
