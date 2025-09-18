@@ -1486,12 +1486,11 @@ def main():
     """Starts the bot and registers all handlers."""
     if not BOT_TOKEN:
         logger.critical("BOT_TOKEN is not set. Please add your token to the script.")
-        return
+        return None
 
-    # Give the global bot instance access to the application
     bot.application = telegram_app
-    
-    # --- Register ALL your handlers here ---
+
+    # Register all handlers
     telegram_app.add_handler(setup_handler)
     telegram_app.add_handler(CommandHandler("editschedule", editschedule_command))
     telegram_app.add_handler(CommandHandler("generateschedule", generate_schedule_command))
@@ -1500,9 +1499,8 @@ def main():
     telegram_app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     telegram_app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
-    # Command Handlers
     telegram_app.add_handler(CommandHandler("start", bot.start_command))
-    telegram_app.add_handler(CommandHandler("help",help_command))
+    telegram_app.add_handler(CommandHandler("help", help_command))
     telegram_app.add_handler(CommandHandler("add", add_class_command))
     telegram_app.add_handler(CommandHandler("list", list_classes_command))
     telegram_app.add_handler(CommandHandler("remove", remove_class_command))
@@ -1516,19 +1514,15 @@ def main():
     telegram_app.add_handler(CommandHandler("export", export_command))
     telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
 
-
-    # Callback Query Handler for buttons
     telegram_app.add_handler(CallbackQueryHandler(button_callback))
 
-    # --- This is the corrected webhook setup ---
-    # It now uses your WEBHOOK_PATH environment variable
-   
-    
-    # This starts the server AFTER all handlers are registered
-  
+    return telegram_app
 
 if __name__ == "__main__":
-    main()
+    application = main()
+    if application:
+        application.run_polling()
+
 
     
     
