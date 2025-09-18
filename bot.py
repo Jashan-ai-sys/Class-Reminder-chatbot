@@ -323,8 +323,10 @@ class LPUClassBot:
             if code in class_name.upper():
                 return info
         return {"name": class_name, "faculty": "TBD", "room": "TBD"}
-    async def start_command(self,update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handles the /start command, routing new users to login and welcoming back existing ones."""
+        print(f"🔥 /start command triggered by {update.effective_user.id}")
+        await update.message.reply_text("Hello! Bot is working ✅")
         user = update.effective_user
         chat_id = user.id
         
@@ -1499,7 +1501,7 @@ def main():
     telegram_app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     telegram_app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
-    telegram_app.add_handler(CommandHandler("start", LPUClassBot.start_command))
+    telegram_app.add_handler(CommandHandler("start", bot.start_command))
     telegram_app.add_handler(CommandHandler("help", help_command))
     telegram_app.add_handler(CommandHandler("add", add_class_command))
     telegram_app.add_handler(CommandHandler("list", list_classes_command))
@@ -1512,7 +1514,7 @@ def main():
     telegram_app.add_handler(CommandHandler("status", status_command))
     telegram_app.add_handler(CommandHandler("test", test_command))
     telegram_app.add_handler(CommandHandler("export", export_command))
-    telegram_app.add_handler(CommandHandler("myschedule", LPUClassBot.myschedule_command))
+    telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
     async def debug_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print("[DEBUG UPDATE]", update)  # <- will print every update in Railway logs
         if update.message:
