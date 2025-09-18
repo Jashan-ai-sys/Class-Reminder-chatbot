@@ -8,7 +8,7 @@ from common.scraper import fetch_lpu_classes
 from telegram import Update
 from bot import telegram_app  
 app = FastAPI()
-
+WEBHOOK_PATH = "/superSecretBotPath734hjw"
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
 
 app.add_middleware(
@@ -45,6 +45,14 @@ async def get_schedule(chat_id: str):
 async def test():
     return {"status": "ok", "message": "🚀 Backend is running fine on Railway!"}
 
+
+APP_URL = os.getenv("APP_URL", "https://class-reminder-chatbot-production-1b31.up.railway.app")
+
+@app.on_event("startup")
+async def set_webhook():
+    webhook_url = f"{APP_URL}{WEBHOOK_PATH}"
+    print(f"--- DEBUG: Setting webhook to {webhook_url}")
+    await telegram_app.bot.set_webhook(webhook_url)
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
