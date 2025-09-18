@@ -20,7 +20,7 @@ from common.crypto import encrypt_password
 from common.db_helpers import save_user
 from datetime import datetime, timezone, timedelta
 from telegram.ext import JobQueue
-from common import get_reminder_preference
+from common.db_helpers import get_reminder_preference
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ============== TELEGRAM IMPORTS ==============
