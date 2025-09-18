@@ -1523,6 +1523,8 @@ def main():
 
     telegram_app.add_handler(MessageHandler(filters.ALL, debug_all))
     telegram_app.add_handler(CallbackQueryHandler(button_callback))
+    print("✅ Handlers registered:", telegram_app.handlers)
+
 
     return telegram_app
 
