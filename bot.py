@@ -17,7 +17,7 @@ from common.db_helpers import init_db
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 from common.crypto import encrypt_password
-from common.db_helpers import save_user
+from common.db_helpers import save_user,get_user
 from datetime import datetime, timezone, timedelta
 from telegram.ext import JobQueue
 from common.db_helpers import get_reminder_preference
