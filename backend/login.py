@@ -30,7 +30,7 @@ async def login_user(chat_id: int, request: Request):
         body = await request.json()
         username = body.get("username")
         password_enc = body.get("password")
-
+        print(f"🔐 Login attempt for chat_id={chat_id}, username={username}")
         if not username or not password_enc:
             return {"error": "Missing username or password"}
 
@@ -52,6 +52,7 @@ async def get_schedule(chat_id: int):
         return {"error": str(e)}
 @app.on_event("startup")
 async def startup_event():
+    db_helpers.init_db()
     from bot import main, telegram_app
     main() 
     await telegram_app.initialize()
