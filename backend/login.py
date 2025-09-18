@@ -50,6 +50,8 @@ async def shutdown_event():
 @app.post("/superSecretBotPath734hjw")
 async def telegram_webhook(request: Request):
     data = await request.json()
+    print("🚀 Webhook called with:", data)
+
     update = Update.de_json(data, telegram_app.bot)
     await telegram_app.process_update(update)
     return {"ok": True}
