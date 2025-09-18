@@ -1,4 +1,6 @@
 # ============== CORE PYTHON LIBRARIES ==============
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import asyncio
 import logging
 import json
@@ -18,11 +20,7 @@ from common.crypto import encrypt_password
 from common.db_helpers import save_user
 from datetime import datetime, timezone, timedelta
 from telegram.ext import JobQueue
-
-init_db()
-
-
-
+from common import get_reminder_preference
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ============== TELEGRAM IMPORTS ==============
@@ -92,18 +90,10 @@ COURSE_INFO = {
 IST = timezone(timedelta(hours=5, minutes=30))
 class LPUClassBot:
       # keep it empty so the AttributeError is gone
-      # keep it empty so the AttributeError is gone
-
+      #
     def __init__(self):
-        # self.classes = self.load_classes()
-        self.application = None
-        self.running = False
-        self.reminder_sent = set()  
         self.start_time = datetime.now()
-# IST = timezone(timedelta(hours=5, minutes=30))
-    # In bot.py
-
-    async def reminders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def reminders_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Shows reminder time options to the user."""
         keyboard = [
             [
@@ -184,7 +174,7 @@ class LPUClassBot:
     async def schedule_reminders(self, application, chat_id: int):
         try:
             # 1. Get the user's preferred reminder time from the database
-            reminder_minutes = get_reminder_preference(chat_id)
+            reminder_minutes = await get_reminder_preference(chat_id)
             print(f"Scheduling reminders for {chat_id} with a {reminder_minutes}-minute lead time.")
 
             data = await fetch_lpu_classes(chat_id)
@@ -362,7 +352,7 @@ class LPUClassBot:
             return
 
         # Check if the user is already in our database
-        db_user = get_user(chat_id)
+        db_user = await get_user(chat_id)
 
         if db_user:
             # User is already registered, welcome them back
