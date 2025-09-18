@@ -1,61 +1,50 @@
-from fastapi import FastAPI, Form, Request
-from fastapi.middleware.cors import CORSMiddleware
-from common.db_helpers import save_user
-from common.crypto import encrypt_password
 import os
-import httpx
-from common.scraper import fetch_lpu_classes
+import time
+from fastapi import FastAPI, Request
 from telegram import Update
-from bot import telegram_app  
+from bot import telegram_app        # <-- Application instance from bot.py
+from scraper import fetch_lpu_classes
+from db_helpers import save_user, save_cookie
+
 app = FastAPI()
+
+# Same webhook path you used in bot.py
 WEBHOOK_PATH = "/superSecretBotPath734hjw"
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONTEND_URL],  # frontend domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.post("/login/{chat_id}")
-async def login_submit(chat_id: str, username: str = Form(...), password: str = Form(...)):
-    enc_pass = encrypt_password(password)
-    save_user(chat_id, username, enc_pass)
-
-    # 👇 Trigger bot scheduling
-    bot_url = os.getenv("BOT_URL", "http://localhost:8080")
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(f"{bot_url}/schedule/{chat_id}")
-    except Exception as e:
-        print(f"⚠️ Could not notify bot: {e}")
-
-    return {"status": "success"}
-@app.post("/schedule/{chat_id}")
-async def get_schedule(chat_id: str):
-    try:
-        data = await fetch_lpu_classes(int(chat_id))
-        return data
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/test")
-async def test():
-    return {"status": "ok", "message": "🚀 Backend is running fine on Railway!"}
 
 
-APP_URL = os.getenv("APP_URL", "https://class-reminder-chatbot-production-1b31.up.railway.app")
-
-@app.on_event("startup")
-async def set_webhook():
-    webhook_url = f"{APP_URL}{WEBHOOK_PATH}"
-    print(f"--- DEBUG: Setting webhook to {webhook_url}")
-    await telegram_app.bot.set_webhook(webhook_url)
+# ✅ Telegram Webhook
 @app.post(WEBHOOK_PATH)
 async def telegram_webhook(request: Request):
     data = await request.json()
     update = Update.de_json(data, telegram_app.bot)
     await telegram_app.process_update(update)
     return {"ok": True}
+
+
+# ✅ Login route (frontend will call this)
+@app.post("/login/{chat_id}")
+async def login_user(chat_id: int, request: Request):
+    try:
+        body = await request.json()
+        username = body.get("username")
+        password_enc = body.get("password")
+
+        if not username or not password_enc:
+            return {"error": "Missing username or password"}
+
+        # Save to Mongo
+        save_user(chat_id, username, password_enc)
+
+        return {"status": "ok", "chat_id": chat_id}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ✅ Schedule fetch route
+@app.post("/schedule/{chat_id}")
+async def get_schedule(chat_id: int):
+    try:
+        data = await fetch_lpu_classes(chat_id)
+        return data
+    except Exception as e:
+        return {"error": str(e)}
