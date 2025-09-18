@@ -1499,7 +1499,7 @@ def main():
     telegram_app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     telegram_app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
-    telegram_app.add_handler(CommandHandler("start", bot.start_command))
+    telegram_app.add_handler(CommandHandler("start", LPUClassBot.start_command))
     telegram_app.add_handler(CommandHandler("help", help_command))
     telegram_app.add_handler(CommandHandler("add", add_class_command))
     telegram_app.add_handler(CommandHandler("list", list_classes_command))
@@ -1512,7 +1512,7 @@ def main():
     telegram_app.add_handler(CommandHandler("status", status_command))
     telegram_app.add_handler(CommandHandler("test", test_command))
     telegram_app.add_handler(CommandHandler("export", export_command))
-    telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
+    telegram_app.add_handler(CommandHandler("myschedule", LPUClassBot.myschedule_command))
 
     telegram_app.add_handler(CallbackQueryHandler(button_callback))
 
