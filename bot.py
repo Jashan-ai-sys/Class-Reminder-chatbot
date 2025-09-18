@@ -70,7 +70,7 @@ print("BOT_TOKEN loaded:", BOT_TOKEN[:10] if BOT_TOKEN else "None")
 PORT = int(os.getenv("PORT", 8080))
 APP_URL = os.getenv("APP_URL")
 print(f"--- DEBUG: Attempting to set webhook to: {APP_URL}") 
-application = Application.builder().token(BOT_TOKEN).build()
+telegram_app = Application.builder().token(BOT_TOKEN).build()
 
 # ==================== CONFIGURATION ====================
 # IMPORTANT: Replace with your actual bot token from BotFather
