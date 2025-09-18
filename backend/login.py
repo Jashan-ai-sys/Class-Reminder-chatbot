@@ -53,8 +53,8 @@ async def set_webhook():
     webhook_url = f"{APP_URL}{WEBHOOK_PATH}"
     print(f"--- DEBUG: Setting webhook to {webhook_url}")
     await telegram_app.bot.set_webhook(webhook_url)
-@app.post("/webhook")
-async def webhook(request: Request):
+@app.post(WEBHOOK_PATH)
+async def telegram_webhook(request: Request):
     data = await request.json()
     update = Update.de_json(data, telegram_app.bot)
     await telegram_app.process_update(update)
