@@ -35,7 +35,7 @@ async def login_user(chat_id: int, request: Request):
             return {"error": "Missing username or password"}
 
         # Save to Mongo
-        save_user(chat_id, username, password_enc)
+        await save_user(chat_id, username, password_enc)
 
         return {"status": "ok", "chat_id": chat_id}
     except Exception as e:
