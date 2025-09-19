@@ -357,6 +357,29 @@ class LPUClassBot:
         
         user = update.effective_user
         chat_id = user.id
+        greeting = (
+        f"👋 Hello {user.first_name}!\n\n"
+        "I’m your *LPU Class Reminder Bot*. 🎓\n\n"
+        "I can help you:\n"
+        "• Get your upcoming classes 🗓️\n"
+        "• Send you reminders ⏰\n"
+        "• Manage your timetable 📚\n\n"
+        "Use the menu below to get started!"
+        )
+
+        # ✅ Persistent menu buttons
+        keyboard = [
+            [KeyboardButton("📅 My Schedule"), KeyboardButton("🔔 Reminders")],
+            [KeyboardButton("📆 Today"), KeyboardButton("➡️ Next Class")],
+            [KeyboardButton("❓ Help"), KeyboardButton("⚙️ Settings")]
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+        await update.message.reply_text(
+            greeting,
+            parse_mode="Markdown",
+            reply_markup=reply_markup
+        )
         
         # Check for deep linking parameter (e.g., from a successful login redirect)
         if context.args and context.args[0] == 'success':
@@ -1031,6 +1054,53 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text="✅ All your classes have been cleared.", parse_mode=ParseMode.MARKDOWN)
     elif query.data == "cancel_action":
         await query.edit_message_text(text="Action cancelled.", parse_mode=ParseMode.MARKDOWN)
+async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles main menu button presses from ReplyKeyboard."""
+    text = update.message.text
+
+    if text == "📅 My Schedule":
+        await update.message.reply_text("📅 Fetching your schedule...")
+        await bot.myschedule_command(update, context)
+
+    elif text == "➡️ Next Class":
+        await update.message.reply_text("➡️ Checking your next class...")
+        await next_class_command(update, context)
+
+    elif text == "📆 Today":
+        await today_classes_command(update, context)
+
+    elif text == "🗓️ This Week":
+        await week_classes_command(update, context)
+
+    elif text == "🔔 Reminders":
+        await bot.reminders_command(update, context)
+
+    elif text == "❓ Help":
+        await help_command(update, context)
+
+    elif text == "⚙️ Settings":
+        await update.message.reply_text("⚙️ Settings will be available soon!")
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("📅 My Schedule", callback_data="myschedule")],
+        [InlineKeyboardButton("📆 Today", callback_data="today_classes")],
+        [InlineKeyboardButton("➡️ Next Class", callback_data="next_class")],
+        [InlineKeyboardButton("🔔 Set Reminders", callback_data="reminders")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    help_text = (
+        "ℹ️ *Help Menu*\n\n"
+        "Here’s what I can do for you:\n"
+        "• 📅 Show all your upcoming classes\n"
+        "• 📆 View today’s classes\n"
+        "• ➡️ Tell you the next class\n"
+        "• 🔔 Configure class reminders\n\n"
+        "Choose an option below 👇"
+    )
+
+    await update.message.reply_text(help_text, parse_mode="Markdown", reply_markup=reply_markup)
+
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Generates and sends an iCalendar (.ics) file of the user's schedule."""
     await update.message.reply_text("📅 Generating your schedule file, please wait...")
@@ -1564,6 +1634,9 @@ def main():
     telegram_app.add_handler(CommandHandler("test", test_command))
     telegram_app.add_handler(CommandHandler("export", export_command))
     telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
+    telegram_app.add_handler(
+    MessageHandler(filters.TEXT & ~filters.COMMAND, bot.menu_handler)
+    )
 
     async def debug_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print("[DEBUG UPDATE]", update)  # <- will print every update in Railway logs
