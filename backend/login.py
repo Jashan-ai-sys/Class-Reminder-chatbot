@@ -10,7 +10,8 @@ from telegram import Update
 from bot import telegram_app        # <-- Application instance from bot.py
 from common.scraper import fetch_lpu_classes
 from common.db_helpers import save_user, save_cookie
-
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from common.reminders import check_classes_and_send_reminders
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -58,6 +59,13 @@ async def startup_event():
     main() 
     await telegram_app.initialize()
     await telegram_app.start()
+    # ✅ Start the reminder scheduler
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        check_classes_and_send_reminders, "interval", seconds=60, args=[telegram_app]
+    )
+    scheduler.start()
+    print("⏰ Reminder scheduler started (checks every 60s).")
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -46,7 +46,7 @@ async def playwright_login(username: str, password: str) -> tuple[str, int]:
         
         return cookie_str, expiry_timestamp
 
-async def get_valid_cookie(chat_id: int) -> str:
+async def get_valid_cookie(chat_id: int, force_refresh: bool = False) -> str:
     """Gets a valid cookie from the DB or by performing a new login."""
     user = await get_user(chat_id)
     if not user:
@@ -55,11 +55,12 @@ async def get_valid_cookie(chat_id: int) -> str:
     cookie = user.get("cookie")
     cookie_expiry = user.get("cookie_expiry")
 
-    if cookie and cookie_expiry and time.time() < cookie_expiry:
+    # Only use cached cookie if still valid & not forcing refresh
+    if cookie and cookie_expiry and time.time() < cookie_expiry and not force_refresh:
         print(f"✅ Using cached cookie from DB for chat_id={chat_id}.")
         return cookie
 
-    print(f"⚠️ Cookie missing or expired for chat_id={chat_id}. Performing new login.")
+    print(f"⚠️ Refreshing cookie for chat_id={chat_id}...")
     username = user.get("username")
     password = user.get("password")
     
@@ -67,46 +68,57 @@ async def get_valid_cookie(chat_id: int) -> str:
         raise RuntimeError("Missing username or password in DB.")
 
     new_cookie, new_expiry = await playwright_login(username, password)
-    
     await save_cookie(chat_id, new_cookie, new_expiry)
     print(f"🍪 New cookie saved to DB for chat_id={chat_id}.")
     
     return new_cookie
 
 async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
-    """Fetches classes for a given user, handling SSL verification securely."""
+    """Fetches classes for a given user, handling SSL verification securely with auto-retry."""
+
     if min_ts is None: 
         min_ts = int(time.time() * 1000)
     if max_ts is None: 
         max_ts = min_ts + 24 * 60 * 60 * 1000
 
-    cookie = await get_valid_cookie(chat_id)
-    
-    headers = {"Cookie": cookie, "Content-Type": "application/json"}
-    payload = {
-        "minDate": min_ts, 
-        "maxDate": max_ts, 
-        "filters": {"showSelf": True, "status": "started,scheduled,ended"}
-    }
-    
-    # FIX #2: Use certifi for the aiohttp API call to ensure it's secure
-    ssl_context = ssl._create_unverified_context()
+    async def try_fetch(cookie: str):
+        headers = {"Cookie": cookie, "Content-Type": "application/json"}
+        payload = {
+            "minDate": min_ts, 
+            "maxDate": max_ts, 
+            "filters": {"showSelf": True, "status": "started,scheduled,ended"}
+        }
+        ssl_context = ssl._create_unverified_context()
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
 
-    connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
+            print(f"📡 Fetching classes from API for chat_id={chat_id}...")
+            async with session.post(LPU_API_URL, json=payload) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"Fetch failed. Error {response.status}: {await response.text()}")
 
-    async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
-        print(f"📡 Fetching classes from API for chat_id={chat_id}...")
-        async with session.post(LPU_API_URL, json=payload) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                raise RuntimeError(f"Fetch failed (likely invalid cookie). Error: {response.status}: {error_text}")
-            data = await response.json()
+                # 👀 check for invalid cookie case
+                if "application/json" not in response.headers.get("Content-Type", ""):
+                    raise ValueError("Invalid cookie: server returned non-JSON response")
 
+                return await response.json()
+
+    try:
+        # 1st attempt with cached cookie
+        cookie = await get_valid_cookie(chat_id)
+        data = await try_fetch(cookie)
+    except Exception as e:
+        print(f"⚠️ Cookie expired or invalid. Retrying with fresh login... ({e})")
+        # 2nd attempt with force refresh
+        cookie = await get_valid_cookie(chat_id, force_refresh=True)
+        data = await try_fetch(cookie)
+
+    # ✅ Normalize classes
     classes = data.get("ref") or data.get("data") or []
     normalized = []
 
     for cls in classes:
-        # Case 1: recurring slots (extra.recurrence)
+        # Case 1: recurring slots
         slots = cls.get("extra", {}).get("recurrence", {}).get("slots", [])
         if slots:
             for slot in slots:
@@ -116,7 +128,7 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
                 new_cls["status"] = slot.get("status", cls.get("status", ""))
                 normalized.append(new_cls)
 
-        # Case 2: scheduledStartDayTime / scheduledEndDayTime (relative to today)
+        # Case 2: relative times
         elif cls.get("scheduledStartDayTime") and cls.get("scheduledEndDayTime"):
             base = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             start = int(base.timestamp() * 1000) + cls["scheduledStartDayTime"]
@@ -127,7 +139,7 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
             new_cls["endTime"] = end
             normalized.append(new_cls)
 
-        # Case 3: already has startTime / endTime
+        # Case 3: already has absolute times
         elif cls.get("startTime") and cls.get("endTime"):
             normalized.append(cls)
 
