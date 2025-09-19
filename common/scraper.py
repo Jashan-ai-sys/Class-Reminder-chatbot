@@ -103,4 +103,32 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
             data = await response.json()
 
     classes = data.get("ref") or data.get("data") or []
-    return {"classes": classes}
+    normalized = []
+
+    for cls in classes:
+        # Case 1: recurring slots (extra.recurrence)
+        slots = cls.get("extra", {}).get("recurrence", {}).get("slots", [])
+        if slots:
+            for slot in slots:
+                new_cls = cls.copy()
+                new_cls["startTime"] = slot.get("start")
+                new_cls["endTime"] = slot.get("end")
+                new_cls["status"] = slot.get("status", cls.get("status", ""))
+                normalized.append(new_cls)
+
+        # Case 2: scheduledStartDayTime / scheduledEndDayTime (relative to today)
+        elif cls.get("scheduledStartDayTime") and cls.get("scheduledEndDayTime"):
+            base = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            start = int(base.timestamp() * 1000) + cls["scheduledStartDayTime"]
+            end = int(base.timestamp() * 1000) + cls["scheduledEndDayTime"]
+
+            new_cls = cls.copy()
+            new_cls["startTime"] = start
+            new_cls["endTime"] = end
+            normalized.append(new_cls)
+
+        # Case 3: already has startTime / endTime
+        elif cls.get("startTime") and cls.get("endTime"):
+            normalized.append(cls)
+
+    return {"classes": normalized}
