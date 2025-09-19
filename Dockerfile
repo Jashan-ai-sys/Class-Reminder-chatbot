@@ -23,9 +23,5 @@ RUN playwright install --with-deps chromium
 
 # Copy app code
 COPY . .
+CMD ["uvicorn", "backend.login:app", "--host", "0.0.0.0", "--port", "8080"]
 
-# Expose the port (FastAPI)
-EXPOSE 8080
-
-# Start Supervisor (runs bot + backend together)
-CMD ["supervisord", "-c", "/app/supervisord.conf"]
