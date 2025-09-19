@@ -1,3 +1,4 @@
+from multiprocessing.connection import wait
 import os
 import sys
 
@@ -52,7 +53,7 @@ async def get_schedule(chat_id: int):
         return {"error": str(e)}
 @app.on_event("startup")
 async def startup_event():
-    db_helpers.init_db()
+    await db_helpers.init_db()
     from bot import main, telegram_app
     main() 
     await telegram_app.initialize()
