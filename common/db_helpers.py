@@ -3,6 +3,7 @@
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
+from common.crypto import decrypt_password,encrypt_password
 
 # Define global variables, to be initialized by init_db()
 client = None
@@ -40,14 +41,17 @@ async def get_user(chat_id: int):
     if users_col is None:
         print("⚠️ DB not connected. Cannot get user.")
         return None
-    return await users_col.find_one({"chat_id": chat_id})
+    user=await users_col.find_one({"chat_id": chat_id})
+    if user and "password" in user:
+        user["password"] = decrypt_password(user["password"])
+    return user
 
 async def save_user(chat_id: int, username: str, password_enc: str):
     """Saves or updates user credentials asynchronously."""
     if users_col is None:
         print("⚠️ DB not connected. Cannot save user.")
         return
-        
+    password_enc = encrypt_password(password_enc)
     await users_col.update_one(
         {"chat_id": chat_id},
         {"$set": {
