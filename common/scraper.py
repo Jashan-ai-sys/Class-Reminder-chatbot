@@ -15,7 +15,10 @@ async def playwright_login(username: str, password: str) -> tuple[str, int]:
     """Logs in using Playwright to get a new session cookie and expiry."""
     print(f"🚀 Performing Playwright login for user {username}...")
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--ignore-certificate-errors"]
+        )
         context = await browser.new_context(ignore_https_errors=True)
         page = await context.new_page()
         await page.route("**/*.{png,jpg,jpeg,svg,woff,ttf}", lambda route: route.abort())
