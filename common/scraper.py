@@ -1,40 +1,22 @@
-# In common/scraper.py
-
+# common/scraper.py
 import os
 import time
-import aiohttp  # Use the async HTTP client
-import asyncio  # Needed for the test runner
-from datetime import datetime, timezone, timedelta
+import aiohttp
 from playwright.async_api import async_playwright
 
-# Import the async helper functions from your corrected db_helpers.py
-from .db_helpers import get_user, save_cookie
-from .crypto import decrypt_password
+# Import the database helpers
+from db_helpers import get_user, save_cookie
 
-URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
+LPU_API_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 
-async def get_user_credentials(chat_id: int):
-    """Gets user credentials asynchronously from the database."""
-    row = await get_user(chat_id)
-    if not row:
-        raise RuntimeError(f"❌ No credentials found for chat_id={chat_id}")
-
-    username = row.get("username")
-    password_enc = row.get("password")
-    if not username or not password_enc:
-        raise RuntimeError("❌ Missing username or password in DB")
-
-    password = password_enc
-    cookie = row.get("cookie")
-    cookie_expiry = row.get("cookie_expiry")
-    return username, password, cookie, cookie_expiry
-
-async def playwright_login(username, password):
-    """Logs in using Playwright to get a session cookie."""
+async def playwright_login(username: str, password: str) -> tuple[str, int]:
+    """Logs in using Playwright to get a new session cookie and expiry."""
+    print(f"🚀 Performing Playwright login for user {username}...")
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
         page = await context.new_page()
+        await page.route("**/*.{png,jpg,jpeg,svg,woff,ttf}", lambda route: route.abort())
         await page.goto("https://myclass.lpu.in")
         await page.fill("input[name=i]", username)
         await page.fill("input[name=p]", password)
@@ -44,60 +26,71 @@ async def playwright_login(username, password):
 
         cookies = await context.cookies()
         await browser.close()
+        
         cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
-        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60) # 7 days
+        # Set expiry for 7 days from now
+        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60) 
+        
         return cookie_str, expiry_timestamp
 
-async def get_valid_cookie(chat_id: int):
-    """Reuses a saved cookie or logs in to get a new one."""
-    username, password, cookie, cookie_expiry = await get_user_credentials(chat_id)
+async def get_valid_cookie(chat_id: int) -> str:
+    """
+    Gets a valid cookie by checking the database first, 
+    or by logging in to get a new one.
+    """
+    user = await get_user(chat_id)
+    if not user:
+        raise RuntimeError(f"❌ No credentials found in DB for chat_id={chat_id}")
 
-    if cookie and cookie_expiry and cookie_expiry > time.time():
-        print("✅ Using saved, valid cookie.")
+    cookie = user.get("cookie")
+    cookie_expiry = user.get("cookie_expiry")
+
+    # Check if a valid, unexpired cookie exists in the database
+    if cookie and cookie_expiry and time.time() < cookie_expiry:
+        print(f"✅ Using cached cookie from DB for chat_id={chat_id}.")
         return cookie
 
-    print("🔄 Cookie expired or missing. Logging in again with Playwright…")
-    new_cookie, expiry = await playwright_login(username, password)
-    await save_cookie(chat_id, new_cookie, expiry)
+    # If no valid cookie exists, perform a new login
+    print(f"⚠️ Cookie missing or expired for chat_id={chat_id}. Performing new login.")
+    username = user.get("username")
+    password = user.get("password") # Assumes password is now decrypted by get_user
+    
+    if not username or not password:
+        raise RuntimeError("❌ Missing username or password in DB.")
+
+    new_cookie, new_expiry = await playwright_login(username, password)
+    
+    # Save the new cookie to the database for future use
+    await save_cookie(chat_id, new_cookie, new_expiry)
+    
     return new_cookie
 
-async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None):
-    """Fetches classes from the LPU API asynchronously."""
-    if min_ts is None: min_ts = int(time.time() * 1000)
-    if max_ts is None: max_ts = min_ts + 24 * 60 * 60 * 1000
+async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
+    """Fetches classes for a given user identified by chat_id."""
+    if min_ts is None: 
+        min_ts = int(time.time() * 1000)
+    if max_ts is None: 
+        max_ts = min_ts + 24 * 60 * 60 * 1000
 
     cookie = await get_valid_cookie(chat_id)
+    
     headers = {"Cookie": cookie, "Content-Type": "application/json"}
-    payload = {"minDate": min_ts, "maxDate": max_ts, "filters": {"showSelf": True, "status": "started,scheduled"}}
+    payload = {
+        "minDate": min_ts, 
+        "maxDate": max_ts, 
+        "filters": {"showSelf": True, "status": "started,scheduled"}
+    }
 
-    # --- THIS IS THE CORRECTED ASYNC CODE ---
     async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.post(URL, json=payload) as response:
+        print(f"📡 Fetching classes from API for chat_id={chat_id}...")
+        async with session.post(LPU_API_URL, json=payload) as response:
             if response.status != 200:
-                raise RuntimeError(f"Fetch failed {response.status}: {await response.text()}")
+                # If the cookie from the DB was invalid, we should still try to log in again next time.
+                # For simplicity, we just raise an error here. A more advanced implementation
+                # could delete the bad cookie and retry the whole process.
+                error_text = await response.text()
+                raise RuntimeError(f"Fetch failed (likely invalid cookie). Error: {response.status}: {error_text}")
             data = await response.json()
-    # -----------------------------------------
 
     classes = data.get("ref") or data.get("data") or []
-    # Your normalization logic is fine and can remain here
-    # ...
     return {"classes": classes}
-
-# --- This test runner is now corrected to work with async ---
-async def main_test():
-    """Wrapper function for async testing."""
-    # Make sure to set TEST_CHAT_ID in your .env file for this to work
-    chat_id = int(os.getenv("TEST_CHAT_ID", "123456"))
-    try:
-        # We need to initialize the DB for the test to work
-        from common.db_helpers import init_db
-        await init_db()
-        
-        data = await fetch_lpu_classes(chat_id)
-        print("Test fetch successful. Data:", data)
-    except Exception as e:
-        print("❌ Test Error:", e)
-
-if __name__ == "__main__":
-    # Use asyncio.run to execute the async test function
-    asyncio.run(main_test())
