@@ -9,6 +9,7 @@ import re
 import io
 from common.db_helpers import set_reminder_preference
 import pickle
+from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
    # or whatever function you defined
 from typing import Dict, List, Optional
@@ -193,7 +194,7 @@ class LPUClassBot:
 
             for cls in classes:
                 title = cls.get("title", "Class").strip()
-                IST = timezone("Asia/Kolkata")
+                IST = ZoneInfo("Asia/Kolkata")
                 start_time = datetime.fromtimestamp(cls["startTime"] / 1000, tz=IST)
 
                 # 2. Use the user's preference to calculate the reminder time
@@ -353,36 +354,38 @@ class LPUClassBot:
                 return info
         return {"name": class_name, "faculty": "TBD", "room": "TBD"}
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handles the /start command with a warm greeting and interactive menu."""
+        """Handles the /start command with a greeting and interactive inline buttons."""
         user = update.effective_user
         chat_id = user.id
 
         greeting = (
             f"👋 Hey {user.first_name}!\n\n"
-            "Jashanprit Welcomes you to the *LPU Class Reminder Bot* 🎓\n\n"
+            "Welcome to the *LPU Class Reminder Bot* 🎓\n\n"
             "I can help you:\n"
             "• View your upcoming classes 🗓️\n"
             "• Get reminders before they start ⏰\n"
             "• Manage your timetable 📚\n\n"
-            "👇 Use the menu below to get started!"
+            "👇 Tap a button below to get started!"
         )
 
-        # ✅ Persistent reply keyboard
+        # ✅ Inline menu (each button calls your button_callback)
         keyboard = [
-            [KeyboardButton("📅 My Schedule"), KeyboardButton("🔔 Reminders")],
-            [KeyboardButton("📆 Today"), KeyboardButton("➡️ Next Class")],
-            [KeyboardButton("❓ Help"), KeyboardButton("⚙️ Settings")],
+            [InlineKeyboardButton("📅 My Schedule", callback_data="list_classes"),
+            InlineKeyboardButton("🔔 Reminders", callback_data="reminders_menu")],
+            [InlineKeyboardButton("📆 Today", callback_data="today_classes"),
+            InlineKeyboardButton("➡️ Next Class", callback_data="next_class")],
+            [InlineKeyboardButton("❓ Help", callback_data="show_help"),
+            InlineKeyboardButton("⚙️ Settings", callback_data="settings")]
         ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # 👇 Send greeting + menu in the same message
         await update.message.reply_text(
             greeting,
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
 
-        # Check DB for returning user
+        # DB check
         db_user = await get_user(chat_id)
         if db_user:
             await update.message.reply_text(
@@ -392,7 +395,6 @@ class LPUClassBot:
             )
             await self.schedule_reminders(context.application, chat_id)
         else:
-            # Show login button for new users
             frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
             login_url = f"{frontend_url}?chat_id={chat_id}"
             login_keyboard = [[InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)]]
