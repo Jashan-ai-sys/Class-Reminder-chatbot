@@ -17,7 +17,7 @@ async def playwright_login(username: str, password: str) -> tuple[str, int]:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(ignore_https_errors=True)
-        page = await context.new_page(ignore_https_errors=True)
+        page = await context.new_page()
         await page.route("**/*.{png,jpg,jpeg,svg,woff,ttf}", lambda route: route.abort())
         await page.goto("https://myclass.lpu.in")
         await page.fill("input[name=i]", username)
