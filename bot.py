@@ -109,6 +109,8 @@ class LPUClassBot:
             "Please choose your preferred class reminder time:",
             reply_markup=reply_markup
         )
+ 
+
     async def myschedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_user.id
         try:
@@ -125,10 +127,12 @@ class LPUClassBot:
                 title = cls.get("title", "Unknown Class").strip()
                 start_ts = cls.get("startTime")
                 end_ts = cls.get("endTime")
+
                 if not start_ts or not end_ts:
+                    print(f"⚠️ Skipping class (missing times): {cls}")
                     continue
 
-                # ✅ Interpret timestamps directly as IST
+                # ✅ Convert timestamps to IST
                 start = datetime.fromtimestamp(start_ts / 1000, tz=IST)
                 end = datetime.fromtimestamp(end_ts / 1000, tz=IST)
 
@@ -143,10 +147,15 @@ class LPUClassBot:
                     + "—" * 40
                 )
 
-            await update.message.reply_text("\n".join(response_lines))
+            # ✅ Prevent empty message error
+            if response_lines:
+                await update.message.reply_text("\n".join(response_lines))
+            else:
+                await update.message.reply_text("🎉 No valid upcoming classes found.")
 
         except Exception as e:
             await update.message.reply_text(f"❌ Error fetching classes: {e}")
+
 
 
     def load_classes(self) -> Dict:
