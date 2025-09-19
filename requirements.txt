@@ -35,3 +35,4 @@ python-multipart
 fastapi
 playwright
 motor
+aiohttp
