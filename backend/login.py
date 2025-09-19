@@ -2,8 +2,6 @@ from multiprocessing.connection import wait
 import os
 import sys
 
-from fastapi import FastAPI, Form, HTTPException, status
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import time
 from common import db_helpers
@@ -28,30 +26,21 @@ app.add_middleware(
 
 # ✅ Login route (frontend will call this)
 @app.post("/login/{chat_id}")
-async def login_user(
-    chat_id: int,
-    username: str = Form(...),
-    password_enc: str = Form(...)
-):
+async def login_user(chat_id: int, request: Request):
     try:
+        body = await request.json()
+        username = body.get("username")
+        password_enc = body.get("password")
         print(f"🔐 Login attempt for chat_id={chat_id}, username={username}")
-
-        # This 'if' check is no longer needed because Form(...) makes the fields required.
-        # FastAPI will automatically return a 422 error if they are missing.
-        # if not username or not password_enc:
-        #     return {"error": "Missing username or password"}
+        if not username or not password_enc:
+            return {"error": "Missing username or password"}
 
         # Save to Mongo
         await save_user(chat_id, username, password_enc)
 
         return {"status": "ok", "chat_id": chat_id}
     except Exception as e:
-        # It's better practice to use HTTPException for specific error responses
-        print(f"An internal error occurred: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An internal server error occurred."
-        )
+        return {"error": str(e)}
 
 
 # ✅ Schedule fetch route
