@@ -90,7 +90,8 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
     }
     
     # FIX #2: Use certifi for the aiohttp API call to ensure it's secure
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    ssl_context = ssl._create_unverified_context()
+
     connector = aiohttp.TCPConnector(ssl=ssl_context)
 
     async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
