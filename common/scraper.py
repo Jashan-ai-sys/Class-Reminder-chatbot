@@ -2,8 +2,8 @@
 import os
 import time
 import aiohttp
-import ssl     
-import certifi 
+import ssl
+import certifi
 from playwright.async_api import async_playwright
 
 # Import the database helpers
@@ -12,14 +12,17 @@ from .db_helpers import get_user, save_cookie
 LPU_API_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
 
 async def playwright_login(username: str, password: str) -> tuple[str, int]:
-    """Logs in using Playwright to get a new session cookie and expiry."""
+    """Logs in using Playwright, bypassing SSL errors."""
     print(f"🚀 Performing Playwright login for user {username}...")
     async with async_playwright() as p:
+        # FIX #1: Pass launch arguments to Chromium to ignore certificate errors
         browser = await p.chromium.launch(
             headless=True,
             args=["--ignore-certificate-errors"]
         )
+        # Also set the context to ignore errors for good measure
         context = await browser.new_context(ignore_https_errors=True)
+        
         page = await context.new_page()
         await page.route("**/*.{png,jpg,jpeg,svg,woff,ttf}", lambda route: route.abort())
         await page.goto("https://myclass.lpu.in")
@@ -38,9 +41,7 @@ async def playwright_login(username: str, password: str) -> tuple[str, int]:
         return cookie_str, expiry_timestamp
 
 async def get_valid_cookie(chat_id: int) -> str:
-    """
-    Gets a valid cookie by checking the database first, or by logging in.
-    """
+    """Gets a valid cookie from the DB or by performing a new login."""
     user = await get_user(chat_id)
     if not user:
         raise RuntimeError(f"No credentials found in DB for chat_id={chat_id}")
@@ -67,7 +68,7 @@ async def get_valid_cookie(chat_id: int) -> str:
     return new_cookie
 
 async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
-    """Fetches classes for a given user identified by chat_id."""
+    """Fetches classes for a given user, handling SSL verification securely."""
     if min_ts is None: 
         min_ts = int(time.time() * 1000)
     if max_ts is None: 
@@ -81,6 +82,8 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
         "maxDate": max_ts, 
         "filters": {"showSelf": True, "status": "started,scheduled,ended"}
     }
+    
+    # FIX #2: Use certifi for the aiohttp API call to ensure it's secure
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     connector = aiohttp.TCPConnector(ssl=ssl_context)
 
