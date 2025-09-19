@@ -7,6 +7,7 @@ import json
 import os
 import re
 import io
+from common.db_helpers import set_reminder_preference
 import pickle
 from datetime import datetime, timedelta
    # or whatever function you defined
@@ -977,7 +978,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = query.from_user.id
 
         # Save the preference to the database
-        bot.set_reminder_preference(chat_id, minutes)
+        await set_reminder_preference(chat_id, minutes)
 
         # Give user feedback by editing the message
         feedback_text = ""

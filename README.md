@@ -1,136 +1,174 @@
-📅 LPU Class Reminder Bot
+LPU Class Schedule & Reminder Bot 🎓
+A Telegram bot designed to help Lovely Professional University (LPU) students stay updated with their class schedules. It automatically fetches the timetable from MyClass, caches the session for efficiency, and can be configured to send timely reminders before each class.
 
-A comprehensive Telegram bot designed to help LPU students manage their class schedules, get timely reminders, and automate their weekly setup.
+Features
+Automated Timetable Fetching: Securely logs into LPU MyClass using Playwright to scrape the class schedule.
 
-This bot has evolved from a simple reminder tool to a feature-rich assistant with multiple ways to import and manage your timetable.
+Efficient Session Caching: Caches the login session cookie in the database to avoid slow browser logins on every request, making subsequent fetches nearly instantaneous.
 
-✨ Features
+Deployment Ready: Built with FastAPI to handle Telegram Webhooks, making it efficient and ready for production deployment on platforms like Railway.
 
-Automatic Class Reminders → Get notified 10–15 minutes before every class.
+Secure Credential Storage: Uses the cryptography library to encrypt and decrypt user passwords before storing them in MongoDB.
 
-Multiple Import Methods:
+Robust Error Handling: Includes SSL verification fixes for aiohttp and Playwright to ensure stability in various server environments.
 
-📄 PDF Parsing – Send your official LPU timetable PDF, and the bot reads it automatically.
+Tech Stack
+Backend: Python, FastAPI
 
-🖥️ Visual Web Editor – A grid-based editor to manage your weekly schedule.
+Telegram Bot: python-telegram-bot
 
-🤖 Guided Setup – Step-by-step conversational setup inside Telegram.
+Web Scraping: Playwright
 
-📊 CSV Upload – Import your schedule via a CSV file.
+Database: MongoDB (with motor for async access)
 
-Calendar Export → Generate an .ics file for Google Calendar, Apple Calendar, or Outlook.
+Security: cryptography for password encryption
 
-Schedule Management → View your daily/weekly schedule or check your next class quickly.
+Deployment: Railway, Gunicorn, Uvicorn
 
-🚀 Commands and Usage
-📌 Main Commands
-Command	Description
-/start	Displays welcome message and main commands.
-/help	Shows a detailed guide on all features.
-/list	Lists all currently scheduled classes.
-/next	Shows details for your next upcoming class.
-/today	Lists today’s classes.
-/week	Displays the schedule for the current week.
-/remove <ID>	Deletes a specific class (get ID from /list).
-/clear	Removes all scheduled classes (with confirmation).
-📌 Schedule Setup Commands
-Command	Description
-/editschedule	Opens the visual, web-based editor for weekly schedule.
-/generateschedule	Creates upcoming week’s classes from template.
-/setup	Starts a guided setup for your weekly schedule.
-/importschedule	Instructions for importing via CSV.
-/cancel	Cancels an ongoing process (like setup).
-📌 Utility Commands
-Command	Description
-/export	Generates an .ics calendar file of your schedule.
-/test	Sends a test notification.
-/status	Shows bot statistics and uptime.
-📌 Automatic Actions (No Command Needed)
+🤖 Bot Commands
+Once the bot is running, you can interact with it in your Telegram chat using these commands:
 
-Send a PDF → Bot reads timetable and saves it as your template.
+/start
 
-Send a CSV → Bot processes the file and schedules classes.
+Displays a welcome message and initializes the bot for your chat.
 
-🛠️ Installation and Setup
-1️⃣ Prerequisites
+/myschedule
 
-Python 3.8+
+Fetches and displays your class schedule for the current day. This is the main command to get your timetable.
 
-A Telegram Bot Token from @BotFather
+🚀 Local Setup and Installation
+Follow these steps to run the bot on your local machine for development and testing.
 
-2️⃣ Basic Bot Setup
-# Clone repository
-git clone <your-repo-url>
-cd <your-repo-name>
+1. Prerequisites
+Python 3.11+
 
-# Create requirements.txt with dependencies
-echo "python-telegram-bot
-ics
-pytz
-pdfplumber
-Flask
-Flask-Cors" > requirements.txt
+Git
 
-# Install dependencies
+A MongoDB database (you can get a free one from MongoDB Atlas)
+
+2. Clone the Repository
+Bash
+
+git clone https://github.com/your-username/your-repo-name.git
+cd your-repo-name
+3. Set Up a Virtual Environment
+Bash
+
+# For Windows
+python -m venv venv
+.\venv\Scripts\activate
+
+# For macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+4. Install Dependencies
+Make sure you have a requirements.txt file with all the necessary libraries.
+
+Plaintext
+
+# requirements.txt
+python-telegram-bot[webhooks]
+fastapi
+uvicorn
+gunicorn
+aiohttp
+playwright
+motor
+cryptography
+python-dotenv
+certifi
+Then, run the installation command:
+
+Bash
+
 pip install -r requirements.txt
+5. Install Playwright Browsers
+This command downloads the necessary browser binaries for Playwright.
 
+Bash
 
-Open lpu_bot.py and replace:
+playwright install --with-deps
+6. Configure Environment Variables
+Create a file named .env in the root of your project and add the following variables.
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+Code snippet
 
+# Your Telegram Bot Token from BotFather
+TELEGRAM_TOKEN="your_telegram_bot_token"
 
-Run the bot:
+# Your MongoDB connection string
+MONGO_URI="your_mongodb_connection_string"
 
-python lpu_bot.py
+# A secret key for encrypting passwords
+# Generate one by running: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+ENCRYPTION_KEY="your_generated_secret_key"
 
-3️⃣ Advanced Setup (Visual Web Editor)
+# The public URL of your deployed app (for production)
+# For local testing, this can be a placeholder
+WEBHOOK_URL="https://your-app-name.up.railway.app"
+🛠️ Running the Bot Locally
+For local development, it's easiest to use Telegram's polling method. You can add a small block to the end of your main.py file to enable this.
 
-The /editschedule feature needs extra deployment:
+Modify main.py for Polling (Optional but Recommended for Dev)
+Add this if __name__ == "__main__": block to the end of your main.py. This part will only run when you execute the file directly, not when Gunicorn runs it in production.
 
-🔹 Deploy API Server
+Python
 
-Deploy server.py to a hosting service (e.g. Render, Heroku, PythonAnywhere).
+# Add this at the end of your main.py
 
-Get the public URL (e.g. https://your-flask-server.onrender.com).
+if __name__ == "__main__":
+    # This block is for local development using polling
+    print("Starting bot in polling mode for local development...")
 
-🔹 Deploy Frontend Web App
+    # Initialize database
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(init_db())
 
-Host index.html, style.css, app.js on GitHub Pages / Netlify.
+    # Register handlers
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("myschedule", schedule_command))
 
-Get the public URL (e.g. https://your-username.github.io/your-repo-name/).
+    # Start polling
+    application.run_polling()
+Run the Bot
 
-🔹 Connect Everything
+Bash
 
-In app.js, update:
+python main.py
+Your bot is now running locally and will respond to commands in your Telegram chat.
 
-const API_SERVER_URL = "https://your-flask-server.onrender.com";
+☁️ Deployment to Railway
+Follow these steps to deploy your bot as a production-ready web service.
 
+1. Create a Procfile
+Create a file named Procfile (no extension) in your project root with this exact content:
 
-In lpu_bot.py, update the URL in editschedule_command with your frontend URL.
+web: gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+2. Push to GitHub
+Commit all your files (main.py, Procfile, requirements.txt, the common folder) and push them to a GitHub repository.
 
-Restart the bot and ensure both server + frontend are live.
+3. Deploy on Railway
+Create a New Project: Log in to your Railway dashboard and create a new project, selecting "Deploy from GitHub repo".
 
-📂 Project Structure
-📦 lpu-class-reminder-bot
- ┣ 📜 lpu_bot.py           # Main Telegram bot
- ┣ 📜 server.py            # API server for visual editor
- ┣ 📜 requirements.txt     # Dependencies
- ┣ 📂 web_editor/          # Web frontend (index.html, style.css, app.js)
- ┗ 📜 README.md            # Documentation
+Select Your Repository: Choose the repository for your bot.
 
-📌 Roadmap
+Configure Service Settings:
 
- Add Google Calendar API sync.
+Go to your new service's "Settings" tab.
 
- Support for recurring semester templates.
+Under the "Build" section, set the Build Command to:
 
- Add AI-powered PDF parsing for messy timetables.
+Bash
 
-🤝 Contributing
+pip install -r requirements.txt && playwright install --with-deps
+Add Environment Variables:
 
-Pull requests are welcome! Please fork the repo and open a PR with improvements.
+Go to the "Variables" tab.
 
-📜 License
+Add all the secrets from your .env file: MONGO_URI, TELEGRAM_TOKEN, and ENCRYPTION_KEY.
 
-MIT License. Feel free to use and modify.
+Railway will provide a public URL for your service (e.g., my-bot.up.railway.app). Add this as the WEBHOOK_URL variable.
+
+Check the Logs: Monitor the "Deployments" tab. The logs will show the build process and your bot starting up. The startup event in main.py will automatically set the webhook with Telegram.
+
+Your bot is now live and will respond to commands instantly!
