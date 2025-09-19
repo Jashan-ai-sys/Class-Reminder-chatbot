@@ -96,4 +96,4 @@ async def get_reminder_preference(chat_id: int) -> int:
         return 10  # Default value
 
     user = await users_col.find_one({'chat_id': chat_id})
-    return user.get('reminder_minutes', 10) if user else 10
+    return user.get('reminder_minutes', 10) if user else 0
