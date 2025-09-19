@@ -1635,7 +1635,7 @@ def main():
     telegram_app.add_handler(CommandHandler("export", export_command))
     telegram_app.add_handler(CommandHandler("myschedule", bot.myschedule_command))
     telegram_app.add_handler(
-    MessageHandler(filters.TEXT & ~filters.COMMAND, bot.menu_handler)
+    MessageHandler(filters.TEXT & ~filters.COMMAND, menu_handler)
     )
 
     async def debug_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
