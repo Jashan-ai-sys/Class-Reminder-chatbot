@@ -18,7 +18,11 @@ async def playwright_login(username: str, password: str) -> tuple[str, int]:
         # FIX #1: Pass launch arguments to Chromium to ignore certificate errors
         browser = await p.chromium.launch(
             headless=True,
-            args=["--ignore-certificate-errors"]
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--ignore-certificate-errors",
+            ]
         )
         # Also set the context to ignore errors for good measure
         context = await browser.new_context(ignore_https_errors=True)
