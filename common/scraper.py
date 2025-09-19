@@ -22,6 +22,8 @@ async def playwright_login(username: str, password: str) -> tuple[str, int]:
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--ignore-certificate-errors",
+                "--ignore-certificate-errors-spki-list", 
+                "--disable-web-security"
             ]
         )
         # Also set the context to ignore errors for good measure
