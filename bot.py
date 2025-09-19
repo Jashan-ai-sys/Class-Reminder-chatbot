@@ -25,7 +25,7 @@ from common.db_helpers import get_reminder_preference
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ============== TELEGRAM IMPORTS ==============
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, File
+from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -353,15 +353,12 @@ class LPUClassBot:
                 return info
         return {"name": class_name, "faculty": "TBD", "room": "TBD"}
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handles the /start command, greets user, and shows main menu."""
+        """Handles the /start command with a warm greeting and interactive menu."""
         user = update.effective_user
         chat_id = user.id
 
-        print(f"🔥 /start command triggered by {chat_id}")
-
-        # --- Friendly Greeting ---
         greeting = (
-            f"👋 Hey *{user.first_name}*!\n\n"
+            f"👋 Hey {user.first_name}!\n\n"
             "Jashanprit Welcomes you to the *LPU Class Reminder Bot* 🎓\n\n"
             "I can help you:\n"
             "• View your upcoming classes 🗓️\n"
@@ -370,52 +367,42 @@ class LPUClassBot:
             "👇 Use the menu below to get started!"
         )
 
-        # --- Persistent Main Menu ---
+        # ✅ Persistent reply keyboard
         keyboard = [
             [KeyboardButton("📅 My Schedule"), KeyboardButton("🔔 Reminders")],
             [KeyboardButton("📆 Today"), KeyboardButton("➡️ Next Class")],
-            [KeyboardButton("❓ Help"), KeyboardButton("⚙️ Settings")]
+            [KeyboardButton("❓ Help"), KeyboardButton("⚙️ Settings")],
         ]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
+        # 👇 Send greeting + menu in the same message
         await update.message.reply_text(
             greeting,
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
 
-        # --- Handle deep-link login success ---
-        if context.args and context.args[0] == 'success':
-            await update.message.reply_text(
-                "✅ You’re logged in! I’ll now start scheduling your class reminders."
-            )
-            await self.schedule_reminders(context.application, chat_id)
-            return
-
-        # --- DB check for returning users ---
+        # Check DB for returning user
         db_user = await get_user(chat_id)
-
         if db_user:
             await update.message.reply_text(
                 f"🚀 Welcome back, *{user.first_name}*! "
-                "Your reminders are active and I’ll keep you updated."
+                "Your reminders are active and I’ll keep you updated. ✅",
+                parse_mode="Markdown"
             )
             await self.schedule_reminders(context.application, chat_id)
-
         else:
-            # --- New user → show login button ---
+            # Show login button for new users
             frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
             login_url = f"{frontend_url}?chat_id={chat_id}"
-
-            login_keyboard = [[
-                InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)
-            ]]
-            login_markup = InlineKeyboardMarkup(login_keyboard)
+            login_keyboard = [[InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)]]
 
             await update.message.reply_text(
-                "🔑 Please log in with your LPU credentials so I can fetch your schedule.",
-                reply_markup=login_markup
+                "👉 To get started, please log in with your LPU credentials so I can fetch your schedule.",
+                reply_markup=InlineKeyboardMarkup(login_keyboard)
             )
+
+
 
     def cleanup_old_classes(self, days_old: int = 7):
         """Remove classes older than specified days"""
