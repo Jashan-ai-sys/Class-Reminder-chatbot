@@ -192,19 +192,23 @@ class LPUClassBot:
 
             for cls in classes:
                 title = cls.get("title", "Class").strip()
-                start_time = datetime.fromtimestamp(cls["startTime"] / 1000)
+                IST = timezone("Asia/Kolkata")
+                start_time = datetime.fromtimestamp(cls["startTime"] / 1000, tz=IST)
 
                 # 2. Use the user's preference to calculate the reminder time
                 reminder_time = start_time - timedelta(minutes=reminder_minutes)
-
-                if reminder_time > datetime.now():
+                delay = (reminder_time - datetime.now(IST)).total_seconds()
+                if delay > 0:
                     application.job_queue.run_once(
                         lambda ctx: ctx.bot.send_message(
-                            chat_id, f"⏰ Reminder: '{title}' starts in {reminder_minutes} mins!" if reminder_minutes > 0 else f"🔔 Your class '{title}' is starting now!"
+                            chat_id,
+                            f"⏰ Reminder: '{title}' starts in {reminder_minutes} mins!"
+                            if reminder_minutes > 0 else f"🔔 Your class '{title}' is starting now!"
                         ),
-                        when=reminder_time,
+                        when=delay,
                         chat_id=chat_id,
-                    )
+                        )
+
             print(f"✅ Reminders scheduled for {chat_id}")
         except Exception as e:
             print(f"⚠️ Could not schedule reminders: {e}")
