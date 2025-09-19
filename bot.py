@@ -360,7 +360,8 @@ class LPUClassBot:
 
         greeting = (
             f"👋 Hey {user.first_name}!\n\n"
-            "Welcome to the *LPU Class Reminder Bot* 🎓\n\n"
+            "Hey there! Jashanprit here.\n"
+            "👋Welcome to the *LPU Class Reminder Bot* 🎓\n\n"
             "I can help you:\n"
             "• View your upcoming classes 🗓️\n"
             "• Get reminders before they start ⏰\n"
@@ -372,10 +373,6 @@ class LPUClassBot:
         keyboard = [
             [InlineKeyboardButton("📅 My Schedule", callback_data="list_classes"),
             InlineKeyboardButton("🔔 Reminders", callback_data="reminders_menu")],
-            [InlineKeyboardButton("📆 Today", callback_data="today_classes"),
-            InlineKeyboardButton("➡️ Next Class", callback_data="next_class")],
-            [InlineKeyboardButton("❓ Help", callback_data="show_help"),
-            InlineKeyboardButton("⚙️ Settings", callback_data="settings")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -993,62 +990,75 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-      # --- NEW: Handle Reminder Preference Buttons ---
+    chat_id = query.from_user.id
+
+    # --- Reminder preference buttons ---
     if data.startswith("set_reminder_"):
-        minutes_str = data.split('_')[-1] # Extracts the number part, e.g., "10"
+        minutes_str = data.split('_')[-1]
         minutes = int(minutes_str)
-        chat_id = query.from_user.id
 
         # Save the preference to the database
         await set_reminder_preference(chat_id, minutes)
 
-        # Give user feedback by editing the message
-        feedback_text = ""
-        if minutes > 0:
-            feedback_text = f"✅ Your reminders are now set to {minutes} minutes before each class."
-        else:
-            feedback_text = "✅ Your reminders are now set for the exact start time of each class."
+        feedback_text = (
+            f"✅ Your reminders are now set to {minutes} minutes before each class."
+            if minutes > 0 else
+            "✅ Your reminders are now set for the exact start time of each class."
+        )
 
         await query.edit_message_text(text=feedback_text)
         return
-    
-    user_id = query.from_user.id
-    
-    # Create a dummy Update object for command handlers
-    dummy_update = type('DummyUpdate', (object,), {
-        'message': query.message,
-        'effective_user': query.from_user
-    })
 
-    if query.data == "list_classes":
-        await list_classes_command(dummy_update, context)
-    elif query.data == "next_class":
-        await next_class_command(dummy_update, context)
-    elif query.data == "today_classes":
-        await today_classes_command(dummy_update, context)
-    elif query.data == "week_classes":
-        await week_classes_command(dummy_update, context)
-    elif query.data == "help_add":
+    # --- Menu buttons ---
+    if data == "list_classes":
+        await bot.myschedule_command(update, context)
+
+    elif data == "next_class":
+        await next_class_command(update, context)
+
+    elif data == "today_classes":
+        await today_classes_command(update, context)
+
+    elif data == "week_classes":
+        await week_classes_command(update, context)
+
+    elif data == "help_add":
         context.args = []
-        await add_class_command(dummy_update, context)
-    elif query.data == "help_addtimetable":
+        await add_class_command(update, context)
+
+    elif data == "help_addtimetable":
         context.args = []
-        await addtimetable_command(dummy_update, context)
-    elif query.data == "show_help":
-        await help_command(dummy_update, context)
-    elif query.data == "timetable_week":
-        await query.edit_message_text(text="Adding this week's timetable...", parse_mode=ParseMode.MARKDOWN)
+        await addtimetable_command(update, context)
+
+    elif data == "show_help":
+        await help_command(update, context)
+
+    elif data == "timetable_week":
+        await query.edit_message_text(
+            text="Adding this week's timetable...",
+            parse_mode=ParseMode.MARKDOWN
+        )
         context.args = ["week"]
-        await addtimetable_command(dummy_update, context)
-    elif query.data == "timetable_next":
-        await query.edit_message_text(text="Adding next week's timetable...", parse_mode=ParseMode.MARKDOWN)
+        await addtimetable_command(update, context)
+
+    elif data == "timetable_next":
+        await query.edit_message_text(
+            text="Adding next week's timetable...",
+            parse_mode=ParseMode.MARKDOWN
+        )
         context.args = ["next"]
-        await addtimetable_command(dummy_update, context)
-    elif query.data == "clear_confirm_yes":
-        bot.clear_all_classes(user_id)
-        await query.edit_message_text(text="✅ All your classes have been cleared.", parse_mode=ParseMode.MARKDOWN)
-    elif query.data == "cancel_action":
+        await addtimetable_command(update, context)
+
+    elif data == "clear_confirm_yes":
+        bot.clear_all_classes(chat_id)
+        await query.edit_message_text(
+            text="✅ All your classes have been cleared.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+    elif data == "cancel_action":
         await query.edit_message_text(text="Action cancelled.", parse_mode=ParseMode.MARKDOWN)
+
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles main menu button presses from ReplyKeyboard."""
     text = update.message.text
