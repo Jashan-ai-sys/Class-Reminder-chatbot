@@ -48,6 +48,7 @@ from googleapiclient.errors import HttpError
 import pytz
 from ics import Calendar, Event
 import pdfplumber
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, File, ReplyKeyboardMarkup, KeyboardButton
 
 # ============== OPTIONAL COMPATIBILITY IMPORTS ==============
 try:
@@ -352,22 +353,24 @@ class LPUClassBot:
                 return info
         return {"name": class_name, "faculty": "TBD", "room": "TBD"}
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handles the /start command, routing new users to login and welcoming back existing ones."""
-        print(f"🔥 /start command triggered by {update.effective_user.id}")
-        
+        """Handles the /start command, greets user, and shows main menu."""
         user = update.effective_user
         chat_id = user.id
+
+        print(f"🔥 /start command triggered by {chat_id}")
+
+        # --- Friendly Greeting ---
         greeting = (
-        f"👋 Hello {user.first_name}!\n\n"
-        "I’m your *LPU Class Reminder Bot*. 🎓\n\n"
-        "I can help you:\n"
-        "• Get your upcoming classes 🗓️\n"
-        "• Send you reminders ⏰\n"
-        "• Manage your timetable 📚\n\n"
-        "Use the menu below to get started!"
+            f"👋 Hey *{user.first_name}*!\n\n"
+            "Jashanprit Welcomes you to the *LPU Class Reminder Bot* 🎓\n\n"
+            "I can help you:\n"
+            "• View your upcoming classes 🗓️\n"
+            "• Get reminders before they start ⏰\n"
+            "• Manage your timetable 📚\n\n"
+            "👇 Use the menu below to get started!"
         )
 
-        # ✅ Persistent menu buttons
+        # --- Persistent Main Menu ---
         keyboard = [
             [KeyboardButton("📅 My Schedule"), KeyboardButton("🔔 Reminders")],
             [KeyboardButton("📆 Today"), KeyboardButton("➡️ Next Class")],
@@ -380,37 +383,40 @@ class LPUClassBot:
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
-        
-        # Check for deep linking parameter (e.g., from a successful login redirect)
+
+        # --- Handle deep-link login success ---
         if context.args and context.args[0] == 'success':
-            await update.message.reply_text("✅ Welcome! You are now logged in. I will start scheduling your class reminders.")
-            # This is the key step after a successful login
-            await bot.schedule_reminders(chat_id)
+            await update.message.reply_text(
+                "✅ You’re logged in! I’ll now start scheduling your class reminders."
+            )
+            await self.schedule_reminders(context.application, chat_id)
             return
 
-        # Check if the user is already in our database
+        # --- DB check for returning users ---
         db_user = await get_user(chat_id)
-        print(db_user)
 
         if db_user:
-            # User is already registered, welcome them back
-            await update.message.reply_text(f"Welcome back, {user.first_name}! I'm already set up to send you reminders. 🚀")
+            await update.message.reply_text(
+                f"🚀 Welcome back, *{user.first_name}*! "
+                "Your reminders are active and I’ll keep you updated."
+            )
             await self.schedule_reminders(context.application, chat_id)
+
         else:
-            # New user, prompt them to log in
+            # --- New user → show login button ---
             frontend_url = os.getenv("FRONTEND_URL", "https://your-frontend.vercel.app")
             login_url = f"{frontend_url}?chat_id={chat_id}"
 
-            keyboard = [[
+            login_keyboard = [[
                 InlineKeyboardButton("🎓 Login with LPU Credentials", url=login_url)
             ]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            login_markup = InlineKeyboardMarkup(login_keyboard)
 
             await update.message.reply_text(
-                f"👋 Welcome, {user.first_name}!\n\n"
-                "To get started, please log in with your LPU credentials so I can fetch your class schedule.",
-                reply_markup=reply_markup
+                "🔑 Please log in with your LPU credentials so I can fetch your schedule.",
+                reply_markup=login_markup
             )
+
     def cleanup_old_classes(self, days_old: int = 7):
         """Remove classes older than specified days"""
         cutoff_date = datetime.now() - timedelta(days=days_old)
