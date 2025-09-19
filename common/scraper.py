@@ -24,7 +24,7 @@ async def get_user_credentials(chat_id: int):
     if not username or not password_enc:
         raise RuntimeError("❌ Missing username or password in DB")
 
-    password = decrypt_password(password_enc)
+    password = password_enc
     cookie = row.get("cookie")
     cookie_expiry = row.get("cookie_expiry")
     return username, password, cookie, cookie_expiry
