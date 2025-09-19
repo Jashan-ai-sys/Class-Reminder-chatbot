@@ -2,6 +2,8 @@
 import os
 import time
 import aiohttp
+import ssl     
+import certifi 
 from playwright.async_api import async_playwright
 
 # Import the database helpers
@@ -76,8 +78,10 @@ async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
         "maxDate": max_ts, 
         "filters": {"showSelf": True, "status": "started,scheduled,ended"}
     }
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    connector = aiohttp.TCPConnector(ssl=ssl_context)
 
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
         print(f"📡 Fetching classes from API for chat_id={chat_id}...")
         async with session.post(LPU_API_URL, json=payload) as response:
             if response.status != 200:

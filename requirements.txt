@@ -35,4 +35,5 @@ python-multipart
 fastapi
 playwright
 motor
+certifi
 aiohttp
