@@ -122,7 +122,7 @@ class LPUClassBot:
 
             classes = data.get("classes") or data.get("ref") or data.get("data") or []
             if not classes:
-                await self._reply(update, "🎉 No upcoming classes found.")
+                await context.bot.send_message(chat_id, "🎉 No upcoming classes found.")
                 return
 
             response_lines = []
@@ -135,7 +135,6 @@ class LPUClassBot:
                     print(f"⚠️ Skipping class (missing times): {cls}")
                     continue
 
-                # ✅ Convert timestamps to IST
                 start = datetime.fromtimestamp(start_ts / 1000, tz=IST)
                 end = datetime.fromtimestamp(end_ts / 1000, tz=IST)
 
@@ -150,14 +149,14 @@ class LPUClassBot:
                     + "—" * 40
                 )
 
-            # ✅ Prevent empty message error
             if response_lines:
-                await self._reply(update, "\n".join(response_lines))
+                await context.bot.send_message(chat_id, "\n".join(response_lines))
             else:
-                await self._reply(update, "🎉 No valid upcoming classes found.")
+                await context.bot.send_message(chat_id, "🎉 No valid upcoming classes found.")
 
         except Exception as e:
-            await self._reply(update, f"❌ Error fetching classes: {e}")
+            await context.bot.send_message(chat_id, f"❌ Error fetching classes: {e}")
+
 
     
     async def _reply(self, update: Update, text: str):
@@ -166,7 +165,8 @@ class LPUClassBot:
             await update.message.reply_text(text)
         elif update.callback_query:
             await update.callback_query.message.reply_text(text)
-        
+        else:
+            print("⚠️ No valid update to reply to." )
 
     def load_classes(self) -> Dict:
         """Load classes from JSON file with error handling"""
