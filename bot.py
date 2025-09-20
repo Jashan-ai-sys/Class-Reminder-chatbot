@@ -122,7 +122,7 @@ class LPUClassBot:
 
             classes = data.get("classes") or data.get("ref") or data.get("data") or []
             if not classes:
-                await self.reply(update, "🎉 No upcoming classes found.")
+                await self._reply(update, "🎉 No upcoming classes found.")
                 return
 
             response_lines = []
