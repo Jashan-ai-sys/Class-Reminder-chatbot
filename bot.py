@@ -1,6 +1,5 @@
 import sys
 import os
-from turtle import update
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import asyncio
 import logging
@@ -123,7 +122,7 @@ class LPUClassBot:
 
             classes = data.get("classes") or data.get("ref") or data.get("data") or []
             if not classes:
-                await self._reply(update, "🎉 No upcoming classes found in the next 24 hours.")
+                await self._reply(update, "🎉 No upcoming classes found.")
                 return
 
             response_lines = []
@@ -151,7 +150,7 @@ class LPUClassBot:
                     + "—" * 40
                 )
 
-            # ✅ Always check response_lines before sending
+            # ✅ Prevent empty message error
             if response_lines:
                 await self._reply(update, "\n".join(response_lines))
             else:
@@ -159,7 +158,6 @@ class LPUClassBot:
 
         except Exception as e:
             await self._reply(update, f"❌ Error fetching classes: {e}")
-
 
     
     async def _reply(self, update: Update, text: str):
