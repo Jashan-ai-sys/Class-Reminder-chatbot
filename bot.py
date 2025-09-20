@@ -185,31 +185,44 @@ class LPUClassBot:
 
     async def schedule_reminders(self, application, chat_id: int):
         try:
-            # 1. Get the user's preferred reminder time from the database
             reminder_minutes = await get_reminder_preference(chat_id)
+            IST = ZoneInfo("Asia/Kolkata")
             print(f"Scheduling reminders for {chat_id} with a {reminder_minutes}-minute lead time.")
 
             data = await fetch_lpu_classes(chat_id)
-            classes = data.get("ref") or data.get("data") or data.get("classes", [])
+            classes = data.get("classes") or data.get("ref") or data.get("data") or []
 
             for cls in classes:
                 title = cls.get("title", "Class").strip()
-                IST = ZoneInfo("Asia/Kolkata")
-                start_time = datetime.fromtimestamp(cls["startTime"] / 1000, tz=IST)
 
-                # 2. Use the user's preference to calculate the reminder time
+                # --- FIX: handle missing startTime ---
+                start_ms = cls.get("startTime")
+                if not start_ms:
+                    start_ms = cls.get("scheduledStartDayTime")
+                    if start_ms:
+                        today = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
+                        start_ms = int(today.timestamp() * 1000) + start_ms
+
+                if not start_ms:
+                    print(f"⚠️ Skipping {title}: no valid start time")
+                    continue
+
+                start_time = datetime.fromtimestamp(start_ms / 1000, tz=IST)
                 reminder_time = start_time - timedelta(minutes=reminder_minutes)
                 delay = (reminder_time - datetime.now(IST)).total_seconds()
+
+                print(f"[DEBUG] {title}: start={start_time}, reminder={reminder_time}, delay={delay:.0f}s")
+
                 if delay > 0:
                     application.job_queue.run_once(
-                        lambda ctx: ctx.bot.send_message(
+                        lambda ctx, t=title: ctx.bot.send_message(
                             chat_id,
-                            f"⏰ Reminder: '{title}' starts in {reminder_minutes} mins!"
-                            if reminder_minutes > 0 else f"🔔 Your class '{title}' is starting now!"
+                            f"⏰ Reminder: '{t}' starts in {reminder_minutes} mins!"
+                            if reminder_minutes > 0 else f"🔔 Your class '{t}' is starting now!"
                         ),
                         when=delay,
                         chat_id=chat_id,
-                        )
+                    )
 
             print(f"✅ Reminders scheduled for {chat_id}")
         except Exception as e:
