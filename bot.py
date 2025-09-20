@@ -122,7 +122,7 @@ class LPUClassBot:
 
             classes = data.get("classes") or data.get("ref") or data.get("data") or []
             if not classes:
-                await update.message.reply_text("🎉 No upcoming classes found.")
+                await self.reply(update, "🎉 No upcoming classes found.")
                 return
 
             response_lines = []
@@ -152,14 +152,21 @@ class LPUClassBot:
 
             # ✅ Prevent empty message error
             if response_lines:
-                await update.message.reply_text("\n".join(response_lines))
+                await self._reply(update, "\n".join(response_lines))
             else:
-                await update.message.reply_text("🎉 No valid upcoming classes found.")
+                await self._reply(update, "🎉 No valid upcoming classes found.")
 
         except Exception as e:
-            await update.message.reply_text(f"❌ Error fetching classes: {e}")
+            await self._reply(update, f"❌ Error fetching classes: {e}")
 
-
+    
+    async def _reply(self, update: Update, text: str):
+        """Helper to reply whether it's a Message or CallbackQuery"""
+        if update.message:
+            await update.message.reply_text(text)
+        elif update.callback_query:
+            await update.callback_query.message.reply_text(text)
+        
 
     def load_classes(self) -> Dict:
         """Load classes from JSON file with error handling"""
