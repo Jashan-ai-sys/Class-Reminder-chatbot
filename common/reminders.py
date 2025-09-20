@@ -18,9 +18,10 @@ async def check_classes_and_send_reminders(application):
     now = datetime.now(IST)
     print(f"[{now.strftime('%H:%M:%S')}] 🔎 Checking classes for reminders...")
     users_col = db_helpers.users_col
-    if not users_col:
+    if users_col is None:
         print("⚠️ users_col is None (DB not ready yet). Skipping this cycle.")
         return
+
     async for user in users_col.find({}):
         chat_id = user.get("chat_id")
         if not chat_id:
