@@ -37,3 +37,4 @@ playwright
 motor
 certifi
 aiohttp
+apscheduler
