@@ -2,7 +2,7 @@
 import time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-from .db_helpers import users_col, get_reminder_preference
+from common import db_helpers 
 from .scraper import fetch_lpu_classes
 
 sent_reminders = set()  # avoid duplicate reminders
@@ -17,14 +17,17 @@ async def check_classes_and_send_reminders(application):
     IST = ZoneInfo("Asia/Kolkata")
     now = datetime.now(IST)
     print(f"[{now.strftime('%H:%M:%S')}] 🔎 Checking classes for reminders...")
-
+    users_col = db_helpers.users_col
+    if not users_col:
+        print("⚠️ users_col is None (DB not ready yet). Skipping this cycle.")
+        return
     async for user in users_col.find({}):
         chat_id = user.get("chat_id")
         if not chat_id:
             continue
 
         try:
-            reminder_minutes = await get_reminder_preference(chat_id)
+            reminder_minutes = await db_helpers.get_reminder_preference(chat_id)
             reminder_window = reminder_minutes * 60  # seconds
             data = await fetch_lpu_classes(chat_id)
             classes = data.get("classes") or data.get("ref") or data.get("data") or []

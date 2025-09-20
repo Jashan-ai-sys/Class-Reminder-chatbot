@@ -11,7 +11,6 @@ from bot import telegram_app        # <-- Application instance from bot.py
 from common.scraper import fetch_lpu_classes
 from common.db_helpers import save_user, save_cookie
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from common.reminders import check_classes_and_send_reminders
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -55,6 +54,8 @@ async def get_schedule(chat_id: int):
 @app.on_event("startup")
 async def startup_event():
     await db_helpers.init_db()
+    from bot import main, telegram_app
+    from common.reminders import check_classes_and_send_reminders
     from bot import main, telegram_app
     main() 
     await telegram_app.initialize()
