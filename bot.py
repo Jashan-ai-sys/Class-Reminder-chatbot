@@ -186,47 +186,24 @@ class LPUClassBot:
     async def schedule_reminders(self, application, chat_id: int):
         try:
             reminder_minutes = await get_reminder_preference(chat_id)
-            IST = ZoneInfo("Asia/Kolkata")
-            print(f"Scheduling reminders for {chat_id} with a {reminder_minutes}-minute lead time.")
+            print(f"🔔 User {chat_id} reminder preference: {reminder_minutes} minutes")
 
-            data = await fetch_lpu_classes(chat_id)
-            classes = data.get("classes") or data.get("ref") or data.get("data") or []
+            # Trigger an immediate reminder check (don’t wait 1 min for APScheduler)
+            from common.reminders import check_classes_and_send_reminders
+            await check_classes_and_send_reminders(application)
 
-            for cls in classes:
-                title = cls.get("title", "Class").strip()
+            await application.bot.send_message(
+                chat_id=chat_id,
+                text=f"✅ Reminders are active. I’ll notify you {reminder_minutes} minutes before each class!"
+            )
 
-                # --- FIX: handle missing startTime ---
-                start_ms = cls.get("startTime")
-                if not start_ms:
-                    start_ms = cls.get("scheduledStartDayTime")
-                    if start_ms:
-                        today = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
-                        start_ms = int(today.timestamp() * 1000) + start_ms
-
-                if not start_ms:
-                    print(f"⚠️ Skipping {title}: no valid start time")
-                    continue
-
-                start_time = datetime.fromtimestamp(start_ms / 1000, tz=IST)
-                reminder_time = start_time - timedelta(minutes=reminder_minutes)
-                delay = (reminder_time - datetime.now(IST)).total_seconds()
-
-                print(f"[DEBUG] {title}: start={start_time}, reminder={reminder_time}, delay={delay:.0f}s")
-
-                if delay > 0:
-                    application.job_queue.run_once(
-                        lambda ctx, t=title: ctx.bot.send_message(
-                            chat_id,
-                            f"⏰ Reminder: '{t}' starts in {reminder_minutes} mins!"
-                            if reminder_minutes > 0 else f"🔔 Your class '{t}' is starting now!"
-                        ),
-                        when=delay,
-                        chat_id=chat_id,
-                    )
-
-            print(f"✅ Reminders scheduled for {chat_id}")
         except Exception as e:
-            print(f"⚠️ Could not schedule reminders: {e}")
+            print(f"⚠️ Could not activate reminders: {e}")
+            await application.bot.send_message(
+                chat_id=chat_id,
+                text="❌ Failed to activate reminders. Please try again."
+            )
+
 
 
     def save_classes(self):
