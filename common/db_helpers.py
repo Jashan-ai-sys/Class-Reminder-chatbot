@@ -97,3 +97,16 @@ async def get_reminder_preference(chat_id: int) -> int:
 
     user = await users_col.find_one({'chat_id': chat_id})
     return user.get('reminder_minutes', 10) if user else 0
+# db_helpers.py
+async def save_cached_schedule(chat_id, schedule):
+    users_col = get_users_collection()
+    await users_col.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"schedule_cache": schedule}},
+        upsert=True
+    )
+
+async def get_cached_schedule(chat_id):
+    users_col = get_users_collection()
+    user = await users_col.find_one({"chat_id": chat_id})
+    return user.get("schedule_cache") if user else None
