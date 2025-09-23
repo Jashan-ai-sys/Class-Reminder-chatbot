@@ -5,7 +5,7 @@ import aiohttp
 import ssl
 import certifi
 from playwright.async_api import async_playwright
-from playwright_manager import run_in_tab 
+from .playwright_manager import run_in_tab 
 
 # Import the database helpers
 from .db_helpers import get_user, save_cookie
