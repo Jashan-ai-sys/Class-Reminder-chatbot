@@ -1,6 +1,7 @@
 from multiprocessing.connection import wait
 import os
 import sys
+from common.playwright_manager import close_browser
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import time
@@ -70,8 +71,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    await telegram_app.stop()
-    await telegram_app.shutdown()
+    await close_browser()
 
 @app.post("/superSecretBotPath734hjw")
 async def telegram_webhook(request: Request):

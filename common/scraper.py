@@ -5,46 +5,40 @@ import aiohttp
 import ssl
 import certifi
 from playwright.async_api import async_playwright
+from playwright_manager import run_in_tab 
 
 # Import the database helpers
 from .db_helpers import get_user, save_cookie
 
 LPU_API_URL = "https://lovelyprofessionaluniversity.codetantra.com/secure/rest/dd/mf"
-semaphore = asyncio.Semaphore(2) 
+
 async def playwright_login(username: str, password: str) -> tuple[str, int]:
-    """Logs in using Playwright, bypassing SSL errors."""
-    print(f"🚀 Performing Playwright login for user {username}...")
-    async with async_playwright() as p:
-        # FIX #1: Pass launch arguments to Chromium to ignore certificate errors
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--ignore-certificate-errors",
-                "--ignore-certificate-errors-spki-list", 
-                "--disable-web-security"
-            ]
-        )
-        # Also set the context to ignore errors for good measure
-        context = await browser.new_context(ignore_https_errors=True)
-        
-        page = await context.new_page()
+    """Logs in using Playwright via manager, bypassing SSL errors."""
+
+    async def _login_task(page):
+        print(f"🚀 Performing Playwright login for user {username}...")
+
+        # Block heavy assets
         await page.route("**/*.{png,jpg,jpeg,svg,woff,ttf}", lambda route: route.abort())
         await page.goto("https://myclass.lpu.in")
+
         await page.fill("input[name=i]", username)
         await page.fill("input[name=p]", password)
         await page.click("button:has-text('Login')")
+
+        # Wait until dashboard is loaded
         await page.wait_for_selector("#cssmenu", timeout=30000)
         print(f"✅ Playwright login successful for {username}")
 
-        cookies = await context.cookies()
-        await browser.close()
-        
+        cookies = await page.context.cookies()
         cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
-        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60) # 7 days
-        
+        expiry_timestamp = int(time.time()) + (7 * 24 * 60 * 60)  # 7 days
+
         return cookie_str, expiry_timestamp
+
+    # Run the login inside the managed browser/tab
+    return await run_in_tab(_login_task)
+
 
 async def get_valid_cookie(chat_id: int, force_refresh: bool = False) -> str:
     """Gets a valid cookie from the DB or by performing a new login."""
@@ -73,28 +67,74 @@ async def get_valid_cookie(chat_id: int, force_refresh: bool = False) -> str:
     
     return new_cookie
 
-async def fetch_lpu_classes(chat_id: int):
-    """Fetch and cache class schedule for user (uses Playwright tabs)."""
+async def fetch_lpu_classes(chat_id: int, min_ts=None, max_ts=None) -> dict:
+    """Fetches classes for a given user, handling SSL verification securely with auto-retry."""
 
-    # 1. Check cache first
-    cached = await db_helpers.get_cached_schedule(chat_id)
-    if cached and cached["expiry"] > datetime.now(IST):
-        return cached["data"]
+    if min_ts is None: 
+        min_ts = int(time.time() * 1000)
+    if max_ts is None: 
+        max_ts = min_ts + 24 * 60 * 60 * 1000
 
-    # 2. Otherwise, scrape fresh
-    async def scrape_classes(page, chat_id):
-        # --- your login logic here ---
-        await page.goto("https://lpulive.lpu.in")   # example
-        # TODO: login with cookie or username/password
-        # TODO: navigate and fetch timetable data
+    async def try_fetch(cookie: str):
+        headers = {"Cookie": cookie, "Content-Type": "application/json"}
+        payload = {
+            "minDate": min_ts, 
+            "maxDate": max_ts, 
+            "filters": {"showSelf": True, "status": "started,scheduled,ended"}
+        }
+        ssl_context = ssl._create_unverified_context()
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
 
-        # Example dummy output
-        return {"classes": []}
+        async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
+            print(f"📡 Fetching classes from API for chat_id={chat_id}...")
+            async with session.post(LPU_API_URL, json=payload) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"Fetch failed. Error {response.status}: {await response.text()}")
 
-    data = await run_in_tab(scrape_classes, chat_id)
+                # 👀 check for invalid cookie case
+                if "application/json" not in response.headers.get("Content-Type", ""):
+                    raise ValueError("Invalid cookie: server returned non-JSON response")
 
-    # 3. Cache results in DB for 3 hours
-    await db_helpers.save_cached_schedule(
-        chat_id,
-        {"data": data, "expiry": datetime.now(IST) + timedelta(hours=3)}
-    )
+                return await response.json()
+
+    try:
+        # 1st attempt with cached cookie
+        cookie = await get_valid_cookie(chat_id)
+        data = await try_fetch(cookie)
+    except Exception as e:
+        print(f"⚠️ Cookie expired or invalid. Retrying with fresh login... ({e})")
+        # 2nd attempt with force refresh
+        cookie = await get_valid_cookie(chat_id, force_refresh=True)
+        data = await try_fetch(cookie)
+
+    # ✅ Normalize classes
+    classes = data.get("ref") or data.get("data") or []
+    normalized = []
+
+    for cls in classes:
+        # Case 1: recurring slots
+        slots = cls.get("extra", {}).get("recurrence", {}).get("slots", [])
+        if slots:
+            for slot in slots:
+                new_cls = cls.copy()
+                new_cls["startTime"] = slot.get("start")
+                new_cls["endTime"] = slot.get("end")
+                new_cls["status"] = slot.get("status", cls.get("status", ""))
+                normalized.append(new_cls)
+
+        # Case 2: relative times
+        elif cls.get("scheduledStartDayTime") and cls.get("scheduledEndDayTime"):
+            base = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            start = int(base.timestamp() * 1000) + cls["scheduledStartDayTime"]
+            end = int(base.timestamp() * 1000) + cls["scheduledEndDayTime"]
+
+            new_cls = cls.copy()
+            new_cls["startTime"] = start
+            new_cls["endTime"] = end
+            normalized.append(new_cls)
+
+        # Case 3: already has absolute times
+        elif cls.get("startTime") and cls.get("endTime"):
+            normalized.append(cls)
+
+    return {"classes": normalized}
