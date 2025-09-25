@@ -74,7 +74,7 @@ async def check_classes_and_send_reminders(application):
                     if reminder_minutes > 0
                     else f"🔔 Your class '{title}' is starting now!"
                 )
-                await application.bot.send_message(chat_id=chat_id, text=msg)
+                await application.bot.send_message(chat_id=chat_id, text=msg*5)
                 print(f"✅ Sent reminder → {chat_id} :: {title}")
 
                 sent_reminders.add(reminder_key)
