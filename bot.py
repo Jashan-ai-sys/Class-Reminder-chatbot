@@ -39,17 +39,6 @@ from telegram.ext import (
 from telegram.constants import ParseMode
 
 # ============== GOOGLE API IMPORTS ==============
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-
-# ============== OTHER THIRD-PARTY IMPORTS ==============
-)
-logger = logging.getLogger(__name__)
-
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 print("BOT_TOKEN loaded:", BOT_TOKEN[:10] if BOT_TOKEN else "None")
 PORT = int(os.getenv("PORT", 8080))
