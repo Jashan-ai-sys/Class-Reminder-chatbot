@@ -46,25 +46,6 @@ async def login_user(chat_id: int, request: Request):
 
 # ✅ Schedule fetch route
 @app.post("/schedule/{chat_id}")
-async def get_schedule(chat_id: int):
-    try:
-        data = await fetch_lpu_classes(chat_id)
-        return data
-    except Exception as e:
-        return {"error": str(e)}
-@app.on_event("startup")
-async def startup_event():
-    await db_helpers.init_db()
-    from bot import main, telegram_app
-    from common.reminders import check_classes_and_send_reminders
-    )
-    scheduler.start()
-    print("⏰ Reminder scheduler started (checks every 60s).")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_browser()
-
 @app.post("/superSecretBotPath734hjw")
 async def telegram_webhook(request: Request):
     data = await request.json()
