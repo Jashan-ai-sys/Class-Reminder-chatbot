@@ -1,6 +1,0 @@
-fastapi
-uvicorn
-jinja2
-cryptography
-pymongo[srv]==4.6.3
-

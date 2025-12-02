@@ -8,3 +8,4 @@ schedule_templates.json
 
 # Python cache
 __pycache__/
+.env
