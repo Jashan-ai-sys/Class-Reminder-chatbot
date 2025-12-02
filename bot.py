@@ -46,22 +46,6 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # ============== OTHER THIRD-PARTY IMPORTS ==============
-import pytz
-from ics import Calendar, Event
-import pdfplumber
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, File, ReplyKeyboardMarkup, KeyboardButton
-
-# ============== OPTIONAL COMPATIBILITY IMPORTS ==============
-try:
-    import nest_asyncio
-    nest_asyncio.apply()
-except ImportError:
-    pass
-
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO # Changed to INFO for better debugging
 )
 logger = logging.getLogger(__name__)
 
