@@ -57,24 +57,6 @@ async def startup_event():
     await db_helpers.init_db()
     from bot import main, telegram_app
     from common.reminders import check_classes_and_send_reminders
-    from bot import main, telegram_app
-    main() 
-    await telegram_app.initialize()
-    await telegram_app.start()
-
-    # Set Webhook
-    from bot import APP_URL
-    if APP_URL:
-        webhook_url = f"{APP_URL}/superSecretBotPath734hjw"
-        print(f"🚀 Setting webhook to: {webhook_url}")
-        await telegram_app.bot.set_webhook(url=webhook_url)
-    else:
-        print("⚠️ APP_URL not set. Webhook not configured.")
-
-    # ✅ Start the reminder scheduler
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(
-        check_classes_and_send_reminders, "interval", seconds=60, args=[telegram_app]
     )
     scheduler.start()
     print("⏰ Reminder scheduler started (checks every 60s).")
