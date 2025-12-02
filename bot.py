@@ -1478,6 +1478,9 @@ async def handle_pdf_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE
         templates = load_templates()
         templates[user_id] = schedule_template
         save_templates(templates)
+
+        # Automatically trigger schedule generation and sync
+        await generate_schedule_command(update, context)
         
         await update.message.reply_text(
             f"✅ Success! I've extracted and saved your weekly schedule from the PDF.\n\n"
