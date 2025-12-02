@@ -1,1 +1,1 @@
-web: uvicorn backend.login:app --host 0.0.0.0 --port $PORT
+web: gunicorn -c gunicorn.conf.py server:app
