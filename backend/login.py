@@ -12,8 +12,11 @@ from bot import telegram_app        # <-- Application instance from bot.py
 from common.scraper import fetch_lpu_classes
 from common.db_helpers import save_user, save_cookie
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
+from telegram.error import RetryAfter
+import asyncio
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,8 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 # ✅ Login route (frontend will call this)
 @app.post("/login/{chat_id}")
@@ -46,6 +47,60 @@ async def login_user(chat_id: int, request: Request):
 
 # ✅ Schedule fetch route
 @app.post("/schedule/{chat_id}")
+async def get_schedule(chat_id: int):
+    try:
+        data = await fetch_lpu_classes(chat_id)
+        return data
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.on_event("startup")
+async def startup_event():
+    await db_helpers.init_db()
+    from bot import main, telegram_app
+    from common.reminders import check_classes_and_send_reminders
+    
+    # Initialize bot
+    # main() # Removed main() call as it might block or start polling if not careful. 
+             # We just need the app initialized.
+    await telegram_app.initialize()
+    await telegram_app.start()
+
+    # Set Webhook with Retry Logic
+    from bot import APP_URL
+    
+    if APP_URL:
+        webhook_url = f"{APP_URL}/superSecretBotPath734hjw"
+        print(f"🚀 Setting webhook to: {webhook_url}")
+        
+        for attempt in range(3):
+            try:
+                await telegram_app.bot.set_webhook(url=webhook_url)
+                print("✅ Webhook set successfully.")
+                break
+            except RetryAfter as e:
+                print(f"⚠️ Flood control exceeded. Retrying in {e.retry_after} seconds...")
+                await asyncio.sleep(e.retry_after)
+            except Exception as e:
+                print(f"❌ Failed to set webhook: {e}")
+                break
+    else:
+        print("⚠️ APP_URL not set. Webhook not configured.")
+
+    # Start the reminder scheduler
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        check_classes_and_send_reminders, "interval", seconds=60, args=[telegram_app]
+    )
+    scheduler.start()
+    print("⏰ Reminder scheduler started (checks every 60s).")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_browser()
+    # await telegram_app.stop() # Good practice to stop the bot app too
+    # await telegram_app.shutdown()
+
 @app.post("/superSecretBotPath734hjw")
 async def telegram_webhook(request: Request):
     data = await request.json()
