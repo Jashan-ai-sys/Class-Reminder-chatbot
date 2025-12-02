@@ -26,6 +26,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ Root route for health checks
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Service is running"}
+
 # ✅ Login route (frontend will call this)
 @app.post("/login/{chat_id}")
 async def login_user(chat_id: int, request: Request):
@@ -61,8 +66,7 @@ async def startup_event():
     from common.reminders import check_classes_and_send_reminders
     
     # Initialize bot
-    # main() # Removed main() call as it might block or start polling if not careful. 
-             # We just need the app initialized.
+    main() # Call main() to register handlers
     await telegram_app.initialize()
     await telegram_app.start()
 
