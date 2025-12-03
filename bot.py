@@ -1621,7 +1621,7 @@ def main():
         if update.message:
             await update.message.reply_text("✅ Bot received your message!")
 
-    telegram_app.add_handler(MessageHandler(filters.ALL, debug_all))
+    # telegram_app.add_handler(MessageHandler(filters.ALL, debug_all))
     telegram_app.add_handler(CallbackQueryHandler(button_callback))
     print("✅ Handlers registered:", telegram_app.handlers)
 
