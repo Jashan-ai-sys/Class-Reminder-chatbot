@@ -12,7 +12,29 @@ async def init_browser():
     if not _playwright:
         _playwright = await async_playwright().start()
     if not _browser:
-        _browser = await _playwright.chromium.launch(headless=True)
+        # Check if we are on Render (or just try default)
+        try:
+            _browser = await _playwright.chromium.launch(headless=True)
+        except Exception:
+            print("⚠️ Default launch failed. Trying explicit path for Render...")
+            # Render installs browsers in a specific cache location
+            import os
+            # Try to find the executable
+            possible_paths = [
+                "/opt/render/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
+                "/opt/render/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell"
+            ]
+            executable_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    executable_path = path
+                    break
+            
+            if executable_path:
+                print(f"✅ Found executable at: {executable_path}")
+                _browser = await _playwright.chromium.launch(headless=True, executable_path=executable_path)
+            else:
+                raise Exception("❌ Could not find Chromium executable on Render.")
     return _browser
 
 async def close_browser():
