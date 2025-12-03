@@ -1528,9 +1528,18 @@ async def connect_calendar_command(update: Update, context: ContextTypes.DEFAULT
         await update.message.reply_text("Server configuration error. Could not find Google credentials.")
         return
 
-    # Decode the Base64 string back into a normal JSON string
-    client_secrets_str = base64.b64decode(base64_secrets).decode('utf-8')
-    client_config = json.loads(client_secrets_str)
+    # Try to load as JSON directly; if fails, try base64 decode
+    try:
+        client_config = json.loads(base64_secrets)
+    except json.JSONDecodeError:
+        try:
+            decoded = base64.b64decode(base64_secrets).decode('utf-8')
+            client_config = json.loads(decoded)
+        except Exception:
+            logger.error("Invalid GOOGLE_CLIENT_SECRET_JSON format.")
+            await update.message.reply_text("Server configuration error. Invalid Google credentials format.")
+            return
+
     
     flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
     flow.redirect_uri = 'http://localhost:8080/'
@@ -1559,8 +1568,12 @@ async def handle_google_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     try:
         base64_secrets = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
-        client_secrets_str = base64.b64decode(base64_secrets).decode('utf-8')
-        client_config = json.loads(client_secrets_str)
+        try:
+            client_config = json.loads(base64_secrets)
+        except json.JSONDecodeError:
+            decoded = base64.b64decode(base64_secrets).decode('utf-8')
+            client_config = json.loads(decoded)
+
 
         flow = InstalledAppFlow.from_client_config(client_config, SCOPES, state=state)
         flow.redirect_uri = 'http://localhost:8080/'
