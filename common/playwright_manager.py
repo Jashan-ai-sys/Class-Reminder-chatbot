@@ -23,17 +23,20 @@ async def init_browser():
             import glob
             print(f"📂 Listing contents of ~/pw-browsers: {glob.glob(os.path.expanduser('~/pw-browsers/**/*'), recursive=True)}")
             
-            possible_paths = [
-                "/opt/render/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
-                "/opt/render/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell",
-                os.path.expanduser("~/pw-browsers/chromium-1194/chrome-linux/chrome"),
-                os.path.expanduser("~/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell")
-            ]
-            executable_path = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    executable_path = path
-                    break
+            # Try to find the executable dynamically
+            import glob
+            search_pattern = os.path.expanduser("~/pw-browsers/**/chrome-linux/chrome")
+            found_files = glob.glob(search_pattern, recursive=True)
+            
+            if not found_files:
+                 # Try headless_shell as fallback
+                 search_pattern = os.path.expanduser("~/pw-browsers/**/chrome-linux/headless_shell")
+                 found_files = glob.glob(search_pattern, recursive=True)
+
+            if found_files:
+                executable_path = found_files[0]
+            else:
+                executable_path = None
             
             if executable_path:
                 print(f"✅ Found executable at: {executable_path}")
