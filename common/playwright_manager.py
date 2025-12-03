@@ -20,6 +20,9 @@ async def init_browser():
             # Render installs browsers in a specific cache location
             import os
             # Try to find the executable
+            import glob
+            print(f"📂 Listing contents of ~/pw-browsers: {glob.glob(os.path.expanduser('~/pw-browsers/**/*'), recursive=True)}")
+            
             possible_paths = [
                 "/opt/render/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
                 "/opt/render/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell",
