@@ -22,7 +22,9 @@ async def init_browser():
             # Try to find the executable
             possible_paths = [
                 "/opt/render/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
-                "/opt/render/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell"
+                "/opt/render/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell",
+                os.path.expanduser("~/pw-browsers/chromium-1194/chrome-linux/chrome"),
+                os.path.expanduser("~/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell")
             ]
             executable_path = None
             for path in possible_paths:
