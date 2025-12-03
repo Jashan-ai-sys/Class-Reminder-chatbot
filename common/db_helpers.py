@@ -110,3 +110,25 @@ async def get_cached_schedule(chat_id):
     
     user = await users_col.find_one({"chat_id": chat_id})
     return user.get("schedule_cache") if user else None
+
+async def save_google_token(chat_id: int, token_data: dict):
+    """Saves the user's Google Calendar OAuth token."""
+    if users_col is None:
+        print("⚠️ DB not connected. Cannot save Google token.")
+        return
+
+    await users_col.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"google_token": token_data}},
+        upsert=True
+    )
+    print(f"✅ Google token saved for chat_id: {chat_id}")
+
+async def get_google_token(chat_id: int):
+    """Retrieves the user's Google Calendar OAuth token."""
+    if users_col is None:
+        print("⚠️ DB not connected. Cannot get Google token.")
+        return None
+
+    user = await users_col.find_one({"chat_id": chat_id})
+    return user.get("google_token") if user else None

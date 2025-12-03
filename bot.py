@@ -22,7 +22,7 @@ from common.crypto import encrypt_password
 from common.db_helpers import save_user,get_user
 from datetime import datetime, timezone, timedelta
 from telegram.ext import JobQueue
-from common.db_helpers import get_reminder_preference
+from common.db_helpers import get_reminder_preference, save_google_token, get_google_token
 import pdfplumber
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
@@ -64,7 +64,7 @@ telegram_app = Application.builder().token(BOT_TOKEN).build()
 # IMPORTANT: Replace with your actual bot token from BotFather
 CLASSES_FILE = "lpu_classes.json"
 TEMPLATES_FILE = "schedule_templates.json"
-TOKEN_STORAGE_FILE = "google_tokens.pickle"
+
 
 # LPU Course mappings for better display
 COURSE_INFO = {
@@ -1355,13 +1355,13 @@ async def generate_schedule_command(update: Update, context: ContextTypes.DEFAUL
     
     # --- Google Calendar Integration ---
     google_creds = None
-    tokens = load_google_tokens()
-    if user_id in tokens:
-        google_creds = tokens[user_id]
-    
+    token_data = await get_google_token(int(user_id))
+    if token_data:
+        google_creds = Credentials.from_authorized_user_info(token_data)
     if not google_creds or not google_creds.valid:
         if google_creds and google_creds.expired and google_creds.refresh_token:
             google_creds.refresh(Request())
+            await save_google_token(int(user_id), json.loads(google_creds.to_json()))
         else:
             google_creds = None
     
@@ -1537,20 +1537,6 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Define the scope: what permission we are asking for.
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-TOKEN_STORAGE_FILE = "google_tokens.pickle"
-
-def load_google_tokens():
-    """Loads all user tokens from the pickle file."""
-    if os.path.exists(TOKEN_STORAGE_FILE):
-        with open(TOKEN_STORAGE_FILE, 'rb') as token:
-            return pickle.load(token)
-    return {}
-
-def save_google_tokens(tokens):
-    """Saves all user tokens to the pickle file."""
-    with open(TOKEN_STORAGE_FILE, 'wb') as token:
-        pickle.dump(tokens, token)
-
 async def connect_calendar_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Starts the Google Calendar authorization flow."""
     
@@ -1615,10 +1601,8 @@ async def handle_google_callback(update: Update, context: ContextTypes.DEFAULT_T
         credentials = flow.credentials
 
         user_id = str(update.effective_user.id)
-        tokens = load_google_tokens()
-        tokens[user_id] = credentials
-        save_google_tokens(tokens)
-        
+        creds_data = json.loads(credentials.to_json())
+        await save_google_token(int(user_id), creds_data)
         await update.message.reply_text("✅ Success! Your Google Calendar has been connected.")
         
     except Exception as e:
