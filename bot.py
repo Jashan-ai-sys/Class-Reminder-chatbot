@@ -23,7 +23,15 @@ from common.db_helpers import save_user,get_user
 from datetime import datetime, timezone, timedelta
 from telegram.ext import JobQueue
 from common.db_helpers import get_reminder_preference
+import pdfplumber
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # ============== TELEGRAM IMPORTS ==============
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
@@ -39,6 +47,12 @@ from telegram.ext import (
 from telegram.constants import ParseMode
 
 # ============== GOOGLE API IMPORTS ==============
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+import pytz
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 print("BOT_TOKEN loaded:", BOT_TOKEN[:10] if BOT_TOKEN else "None")
 PORT = int(os.getenv("PORT", 8080))
