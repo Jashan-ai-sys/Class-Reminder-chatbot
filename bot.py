@@ -1402,32 +1402,39 @@ async def generate_schedule_command(update: Update, context: ContextTypes.DEFAUL
                 
                 # 2. Add class to Google Calendar
                 if google_service:
-                    event_body = {
-                        'summary': class_info['code'],
-                        'location': 'MyClass LPU',
-                        'description': f"Course: {class_info.get('notes', 'N/A')}",
-                        'start': {'dateTime': start_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
-                        'end': {'dateTime': end_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
-                    }
-                    
-                    # --- NEW: Check for existing events before creating ---
-                    events_result = google_service.events().list(
-                        calendarId='primary',
-                        timeMin=start_time.isoformat(),
-                        timeMax=end_time.isoformat(),
-                        q=class_info['code'], # Search for the event name
-                        singleEvents=True
-                    ).execute()
-                    existing_events = events_result.get('items', [])
-
-                    if not existing_events:
-                        # If no event was found, create a new one
-                        google_service.events().insert(calendarId='primary', body=event_body).execute()
-                        google_added_count += 1
-                    else:
-                        # If an event already exists, skip it
-                        google_skipped_count += 1
-                    # --- END NEW ---
+                    try:
+                        event_body = {
+                            'summary': class_info['code'],
+                            'location': 'MyClass LPU',
+                            'description': f"Course: {class_info.get('notes', 'N/A')}",
+                            'start': {'dateTime': start_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
+                            'end': {'dateTime': end_time.isoformat(), 'timeZone': 'Asia/Kolkata'},
+                        }
+                        
+                        # --- NEW: Check for existing events before creating ---
+                        events_result = google_service.events().list(
+                            calendarId='primary',
+                            timeMin=start_time.isoformat(),
+                            timeMax=end_time.isoformat(),
+                            q=class_info['code'], # Search for the event name
+                            singleEvents=True
+                        ).execute()
+                        existing_events = events_result.get('items', [])
+                
+                        if not existing_events:
+                            # If no event was found, create a new one
+                            google_service.events().insert(calendarId='primary', body=event_body).execute()
+                            google_added_count += 1
+                            logger.info(f"Added Google Calendar event: {class_info['code']} at {start_time}")
+                        else:
+                            # If an event already exists, skip it
+                            google_skipped_count += 1
+                            logger.info(f"Skipped duplicate Google Calendar event: {class_info['code']} at {start_time}")
+                        # --- END NEW ---
+                    except Exception as e:
+                        logger.error(f"Failed to sync event to Google Calendar: {e}")
+                else:
+                    logger.warning("Google Service not available. Skipping calendar sync.")
 
             except Exception as e:
                 logger.error(f"Error generating class from template {class_info}: {e}")
