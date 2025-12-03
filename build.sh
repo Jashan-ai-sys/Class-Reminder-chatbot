@@ -6,5 +6,5 @@ set -o errexit
 pip install -r requirements.txt
 
 # Install Playwright browsers
+export PLAYWRIGHT_BROWSERS_PATH=$HOME/pw-browsers
 playwright install chromium
-# playwright install-deps chromium  <-- Removed because it requires root/sudo which Render doesn't allow in build
