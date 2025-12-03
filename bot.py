@@ -1468,9 +1468,20 @@ async def handle_pdf_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE
                 if not time_str: continue
                 
                 # Extract the start time (e.g., '09' from '09-10 AM') and format it
-                start_hour = time_str.split('-')[0].strip()
-                if len(start_hour) == 1: start_hour = f"0{start_hour}"
-                start_time = f"{start_hour}:00"
+                try:
+                    parts = time_str.split("-")
+                    start_part = parts[0].strip()
+                    start_hour = int(start_part)
+                    
+                    if "PM" in time_str.upper() and start_hour < 12:
+                        start_hour += 12
+                    elif "AM" in time_str.upper() and start_hour == 12:
+                        start_hour = 0
+                        
+                    start_time = f"{start_hour:02d}:00"
+                except Exception as e:
+                    logger.error(f"Error parsing time '{time_str}': {e}")
+                    continue
 
                 # Loop through cells in the row, corresponding to days
                 for i, cell_text in enumerate(row[1:]):
