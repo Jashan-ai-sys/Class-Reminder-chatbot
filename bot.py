@@ -83,6 +83,7 @@ class LPUClassBot:
       #
     def __init__(self):
         self.start_time = datetime.now()
+        self.classes = self.load_classes()
     async def reminders_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Shows reminder time options to the user."""
         keyboard = [
